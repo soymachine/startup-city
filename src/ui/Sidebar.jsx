@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react'
 import { signOut } from 'firebase/auth'
 import { auth } from '../firebase/config'
 import { NIVEL_INFO, ESTADO_INFO } from '../firebase/startups'
+import { VERSION } from '../version'
 
 const ESTADOS = ['todos', ...Object.keys(ESTADO_INFO)]
 
@@ -114,10 +115,11 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-space-accent">
+      <div className="p-3 border-t border-space-accent space-y-2">
         <button onClick={() => signOut(auth)} className="w-full text-xs text-gray-500 hover:text-gray-300 transition-colors">
           Cerrar sesión
         </button>
+        <p className="text-center text-xs text-gray-700 select-none">{VERSION}</p>
       </div>
     </div>
   )
