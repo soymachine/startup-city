@@ -82,3 +82,11 @@ export async function bajarNivel(id, nivelActual) {
 export async function deleteStartup(id) {
   return deleteDoc(doc(db, COLLECTION, id))
 }
+
+export async function updateStartupPosition(id, col, row) {
+  return updateDoc(doc(db, COLLECTION, id), {
+    pos_x: col,
+    pos_y: row,
+    updated_at: serverTimestamp(),
+  })
+}

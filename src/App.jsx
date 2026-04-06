@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase/config'
-import { subscribeToStartups } from './firebase/startups'
+import { subscribeToStartups, updateStartupPosition } from './firebase/startups'
+import { generateCity } from './game/generators/CityGen'
+import { MAP_COLS, MAP_ROWS, MAP_SEED } from './game/config'
 import Login from './ui/Login'
 import Sidebar from './ui/Sidebar'
 import StartupPanel from './ui/StartupPanel'
@@ -14,10 +16,13 @@ export default function App() {
   const [authLoading, setAuthLoading] = useState(true)
   const [startups, setStartups] = useState([])
   const [selectedStartup, setSelectedStartup] = useState(null)
-  const [newPos, setNewPos] = useState(null) // {col, row} for new startup form
+  const [newPos, setNewPos] = useState(null)
   const [notification, setNotification] = useState(null)
   const phaserRef = useRef(null)
   const prevStartupsRef = useRef([])
+
+  // Generate city map data once (same seed → same map as Phaser)
+  const mapData = useMemo(() => generateCity(MAP_COLS, MAP_ROWS, MAP_SEED), [])
 
   // Auth listener
   useEffect(() => {
@@ -31,7 +36,6 @@ export default function App() {
   useEffect(() => {
     if (!user) return
     const unsub = subscribeToStartups((incoming) => {
-      // Detect level-ups and notify
       const prev = prevStartupsRef.current
       for (const s of incoming) {
         const old = prev.find((p) => p.id === s.id)
@@ -42,26 +46,23 @@ export default function App() {
       prevStartupsRef.current = incoming
       setStartups(incoming)
 
-      // Sync with Phaser
       if (phaserRef.current) {
         phaserRef.current.syncStartups(incoming, handleBuildingSelect, handleEmptyTile)
       }
 
-      // Update selected startup if open
       setSelectedStartup((prev) => {
         if (!prev) return null
         return incoming.find((s) => s.id === prev.id) ?? null
       })
     })
     return unsub
-  }, [user])
+  }, [user]) // eslint-disable-line
 
-  // Sync Phaser whenever startups change (also handles scene ready after initial load)
   useEffect(() => {
-    if (phaserRef.current && startups.length > 0) {
+    if (phaserRef.current) {
       phaserRef.current.syncStartups(startups, handleBuildingSelect, handleEmptyTile)
     }
-  }, [startups])
+  }, [startups]) // eslint-disable-line
 
   function showNotification(msg) {
     setNotification(msg)
@@ -74,12 +75,17 @@ export default function App() {
   }, [])
 
   const handleEmptyTile = useCallback((col, row) => {
-    // Check if there's already a building at this position
-    const occupied = startups.some((s) => s.pos_x === col && s.pos_y === row)
-    if (occupied) return
     setSelectedStartup(null)
     setNewPos({ col, row })
-  }, [startups])
+  }, [])
+
+  const handleStartupMove = useCallback(async (id, col, row) => {
+    try {
+      await updateStartupPosition(id, col, row)
+    } catch (e) {
+      console.error('Move failed', e)
+    }
+  }, [])
 
   const handleCenterOn = useCallback((col, row) => {
     phaserRef.current?.centerOn(col, row)
@@ -100,55 +106,46 @@ export default function App() {
 
   return (
     <div className="flex h-screen bg-city-bg overflow-hidden">
-      {/* Sidebar */}
       <Sidebar
         user={user}
         startups={startups}
-        onSelectStartup={(s) => {
-          setNewPos(null)
-          setSelectedStartup(s)
-        }}
+        onSelectStartup={(s) => { setNewPos(null); setSelectedStartup(s) }}
         onCenterOn={handleCenterOn}
         otherOnline={false}
       />
 
-      {/* Main canvas area */}
       <div className="flex-1 relative">
         <PhaserGame
           ref={phaserRef}
           onBuildingSelect={handleBuildingSelect}
           onEmptyTileClick={handleEmptyTile}
+          onStartupMove={handleStartupMove}
         />
 
-        {/* Minimap */}
         <div className="absolute bottom-4 right-4 z-10">
-          <Minimap startups={startups} />
+          <Minimap startups={startups} mapData={mapData} />
         </div>
 
-        {/* Help hint */}
         {startups.length === 0 && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none text-center">
             <div className="bg-city-panel/80 backdrop-blur border border-city-accent rounded-xl px-6 py-4 text-sm text-gray-300">
               <p className="font-bold text-white mb-1">Bienvenido a Startup City 🏙️</p>
-              <p>Haz click en cualquier solar del mapa para añadir tu primera startup</p>
+              <p>Click en el mapa para añadir tu primera startup · Arrastra para moverla</p>
             </div>
           </div>
         )}
 
-        {/* Notification */}
         {notification && (
           <div className="absolute top-4 left-1/2 -translate-x-1/2 z-20 bg-city-panel border border-city-gold text-city-gold px-4 py-2 rounded-lg text-sm shadow-xl animate-bounce">
             {notification}
           </div>
         )}
 
-        {/* Zoom hint */}
         <div className="absolute bottom-4 left-4 z-10 text-xs text-gray-600 pointer-events-none">
-          Rueda: zoom · Drag: mover · Click edificio: editar
+          Rueda: zoom · Drag mapa: navegar · Click edificio: editar · Drag edificio: mover
         </div>
       </div>
 
-      {/* Right panel — startup detail or new startup form */}
       {(selectedStartup || newPos) && (
         <div className="w-80 bg-city-panel border-l border-city-accent overflow-hidden flex flex-col">
           {selectedStartup && (

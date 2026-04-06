@@ -3,21 +3,23 @@ import Phaser from 'phaser'
 import BootScene from './scenes/BootScene'
 import MapScene from './scenes/MapScene'
 
-const PhaserGame = forwardRef(function PhaserGame({ onBuildingSelect, onEmptyTileClick }, ref) {
+const PhaserGame = forwardRef(function PhaserGame(
+  { onBuildingSelect, onEmptyTileClick, onStartupMove },
+  ref
+) {
   const containerRef = useRef(null)
-  const gameRef = useRef(null)
-  const mapSceneRef = useRef(null)
+  const gameRef      = useRef(null)
+  const mapSceneRef  = useRef(null)
 
   useImperativeHandle(ref, () => ({
     syncStartups(startups) {
-      if (mapSceneRef.current) {
-        mapSceneRef.current.syncStartups(startups, onBuildingSelect, onEmptyTileClick)
-      }
+      mapSceneRef.current?.syncStartups(startups, onBuildingSelect, onEmptyTileClick)
     },
     centerOn(col, row) {
-      if (mapSceneRef.current) {
-        mapSceneRef.current.centerOn(col, row)
-      }
+      mapSceneRef.current?.centerOn(col, row)
+    },
+    getMapData() {
+      return mapSceneRef.current?.getMapData() ?? null
     },
   }))
 
@@ -35,47 +37,42 @@ const PhaserGame = forwardRef(function PhaserGame({ onBuildingSelect, onEmptyTil
         mode: Phaser.Scale.RESIZE,
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      render: {
-        antialias: false,
-        pixelArt: true,
-      },
+      render: { antialias: false, pixelArt: true },
     }
 
     const game = new Phaser.Game(config)
     gameRef.current = game
 
-    game.events.on('ready', () => {
-      const mapScene = game.scene.getScene('MapScene')
-      if (mapScene) {
-        mapSceneRef.current = mapScene
-      } else {
-        game.scene.keys['MapScene']?.events.on('create', () => {
-          mapSceneRef.current = game.scene.getScene('MapScene')
-        })
-      }
-    })
+    // When MapScene is ready, wire the startup:move event
+    const wireScene = () => {
+      const scene = game.scene.getScene('MapScene')
+      if (!scene) return
+      mapSceneRef.current = scene
+      scene.events.on('startup:move', (id, col, row) => {
+        if (onStartupMove) onStartupMove(id, col, row)
+      })
+    }
+
+    game.events.on('ready', wireScene)
+    // Also try immediately (scene might already be running)
+    setTimeout(wireScene, 100)
 
     return () => {
       game.destroy(true)
-      gameRef.current = null
+      gameRef.current  = null
       mapSceneRef.current = null
     }
-  }, [])
+  }, []) // eslint-disable-line
 
-  // Update callbacks when props change
+  // Keep callbacks current without recreating the game
   useEffect(() => {
-    if (mapSceneRef.current) {
-      mapSceneRef.current._onSelectCallback = onBuildingSelect
-      mapSceneRef.current._onEmptyTileCallback = onEmptyTileClick
-    }
+    if (!mapSceneRef.current) return
+    mapSceneRef.current._onSelectCallback     = onBuildingSelect
+    mapSceneRef.current._onEmptyTileCallback  = onEmptyTileClick
   }, [onBuildingSelect, onEmptyTileClick])
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full"
-      style={{ position: 'absolute', inset: 0 }}
-    />
+    <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
   )
 })
 
