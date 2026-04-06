@@ -71,13 +71,15 @@ const PhaserGame = forwardRef(function PhaserGame(
       let pctY = 50
 
       if (cam) {
-        const w = el.clientWidth
-        const h = el.clientHeight
-        if (w > 0 && h > 0) {
-          // Sun lives at world (0,0). screenX = (worldX - scrollX) * zoom
-          pctX = ((0 - cam.scrollX) * cam.zoom / w) * 100
-          pctY = ((0 - cam.scrollY) * cam.zoom / h) * 100
-        }
+        // Correct world→screen for Phaser's camera where scrollX = worldAtLeftEdge:
+        //   worldX = (screenX - cam.x) / zoom + scrollX   BUT
+        //   cam.scrollX is set by centerOn as x - width/2 (no zoom factor),
+        //   so midPoint.x = scrollX + width/2 is the world point at screen centre.
+        //   screenX_of_world_0 = width/2 - midPoint.x * zoom
+        const screenX = cam.width  * 0.5 - cam.midPoint.x * cam.zoom
+        const screenY = cam.height * 0.5 - cam.midPoint.y * cam.zoom
+        pctX = (screenX / cam.width)  * 100
+        pctY = (screenY / cam.height) * 100
       }
 
       el.style.background =
