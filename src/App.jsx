@@ -17,7 +17,7 @@ export default function App() {
   const [newOrbit, setNewOrbit]       = useState(null)   // orbital_radius for new startup
   const [notification, setNotification] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
-  const [bgColors, setBgColors]         = useState({ inner: '#1464c8', outer: '#03050f' })
+  const [bgColors, setBgColors]         = useState({ inner: '#03152b', outer: '#03050f' })
   const phaserRef    = useRef(null)
   const prevStartups = useRef([])
 

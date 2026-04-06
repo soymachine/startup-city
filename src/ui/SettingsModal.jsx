@@ -33,7 +33,7 @@ export default function SettingsModal({ colors, onChange, onClose }) {
         />
 
         <button
-          onClick={() => onChange({ inner: '#1464c8', outer: '#03050f' })}
+          onClick={() => onChange({ inner: '#03152b', outer: '#03050f' })}
           className="mt-4 w-full text-xs text-gray-500 hover:text-gray-300 transition-colors"
         >
           Restaurar valores por defecto

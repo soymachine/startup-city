@@ -10,11 +10,11 @@ const PhaserGame = forwardRef(function PhaserGame(
   const containerRef     = useRef(null)
   const gameRef          = useRef(null)
   const spaceSceneRef    = useRef(null)
-  const gradientInnerRef = useRef(gradientInner ?? '#1464c8')
+  const gradientInnerRef = useRef(gradientInner ?? '#03152b')
   const gradientOuterRef = useRef(gradientOuter ?? '#03050f')
 
   // Keep colour refs in sync with props (no re-render cost)
-  useEffect(() => { gradientInnerRef.current = gradientInner ?? '#1464c8' }, [gradientInner])
+  useEffect(() => { gradientInnerRef.current = gradientInner ?? '#03152b' }, [gradientInner])
   useEffect(() => { gradientOuterRef.current = gradientOuter ?? '#03050f' }, [gradientOuter])
 
   useImperativeHandle(ref, () => ({
