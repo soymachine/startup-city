@@ -9,6 +9,8 @@ import Planet from '../objects/Planet'
 // Drag state machine
 const DS = { IDLE: 0, PRESS_WAIT: 1, DRAGGING: 2 }
 
+const NIVEL_NAMES = ['IDEA', 'DEFINING', 'PROTOTYPE', 'PRIVATE BETA', 'PUBLIC BETA', 'TRACTION', 'SCALE-UP']
+
 export default class SpaceScene extends Phaser.Scene {
   constructor() {
     super({ key: 'SpaceScene' })
@@ -20,6 +22,10 @@ export default class SpaceScene extends Phaser.Scene {
     this._panStart         = null
     this._ringGfx          = null
     this._dragGfx          = null
+    this._labelGfx         = null
+    this._labelName        = null
+    this._labelLevel       = null
+    this._selectedPlanet   = null
     this._time             = 0
   }
 
@@ -33,8 +39,20 @@ export default class SpaceScene extends Phaser.Scene {
     this._drawStarfield()
     this._drawSun()
 
-    this._ringGfx = this.add.graphics().setDepth(50)
-    this._dragGfx = this.add.graphics().setDepth(9999)
+    this._ringGfx  = this.add.graphics().setDepth(50)
+    this._dragGfx  = this.add.graphics().setDepth(9999)
+    this._labelGfx = this.add.graphics().setDepth(500)
+
+    const FONT = 'ui-monospace, "Courier New", monospace'
+    this._labelName = this.add.text(0, 0, '', {
+      fontSize: '11px', fontFamily: FONT,
+      color: '#ffffff', resolution: 2,
+    }).setOrigin(0, 1).setDepth(501).setVisible(false)
+
+    this._labelLevel = this.add.text(0, 0, '', {
+      fontSize: '9px', fontFamily: FONT,
+      color: '#888888', resolution: 2,
+    }).setOrigin(0, 0).setDepth(501).setVisible(false)
 
     this._setupInput()
     this.events.emit('sceneReady')
@@ -56,7 +74,11 @@ export default class SpaceScene extends Phaser.Scene {
     const incoming = new Set(startups.map((s) => s.id))
 
     for (const [id, planet] of this._planets) {
-      if (!incoming.has(id)) { planet.destroy(); this._planets.delete(id) }
+      if (!incoming.has(id)) {
+        if (this._selectedPlanet === planet) this._selectedPlanet = null
+        planet.destroy()
+        this._planets.delete(id)
+      }
     }
 
     for (const startup of startups) {
@@ -232,11 +254,93 @@ export default class SpaceScene extends Phaser.Scene {
   }
 
   _updateHover() {
-    if (this._drag.state !== DS.IDLE) return
+    if (this._drag.state !== DS.IDLE) {
+      this._updateLabel(null)
+      return
+    }
     const ptr     = this.input.activePointer
     const hovered = this._findPlanetAt(ptr.worldX, ptr.worldY)
     for (const [, planet] of this._planets) planet.setHovered(planet === hovered)
     this.input.setDefaultCursor(hovered ? 'grab' : 'default')
+    this._updateLabel(hovered ?? this._selectedPlanet)
+  }
+
+  // ── Callout label (zoom-independent) ────────────────────────────────────────
+  // The label is drawn in world-space but all lengths are divided by cam.zoom,
+  // so the rendered result is always the same number of screen pixels regardless
+  // of zoom level.
+
+  _updateLabel(planet) {
+    const gfx  = this._labelGfx
+    const name = this._labelName
+    const lvl  = this._labelLevel
+
+    gfx.clear()
+
+    if (!planet) {
+      name.setVisible(false)
+      lvl.setVisible(false)
+      return
+    }
+
+    const cam   = this.cameras.main
+    const zoom  = cam.zoom
+    const iz    = 1 / zoom                          // one screen-pixel in world units
+
+    const startup = planet.startup
+    const nivel   = startup?.nivel ?? 0
+    const r       = PLANET_RADII[nivel]
+    const { body } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
+
+    // Callout geometry — all in screen pixels, converted to world by × iz
+    // Direction: upper-right (45°)
+    const C45   = 0.7071
+    const DOT   = 2.5   // dot radius (screen px)
+    const DIAG  = 16    // diagonal length (screen px)
+    const HORIZ = 42    // horizontal length (screen px)
+    const GAP   = 5     // gap to text (screen px)
+
+    // Start: planet edge at 45° (world px)
+    const ex = planet.x + r * C45
+    const ey = planet.y - r * C45
+
+    // End of diagonal (world px)
+    const dx = ex + DIAG * C45 * iz
+    const dy = ey - DIAG * C45 * iz
+
+    // End of horizontal (world px)
+    const hx = dx + HORIZ * iz
+    const hy = dy
+
+    // Color as CSS string
+    const colorStr = '#' + body.toString(16).padStart(6, '0')
+
+    // Draw callout line
+    gfx.lineStyle(iz, body, 0.75)
+    gfx.beginPath()
+    gfx.moveTo(ex, ey)
+    gfx.lineTo(dx, dy)
+    gfx.lineTo(hx, hy)
+    gfx.strokePath()
+
+    // Small dot at planet edge
+    gfx.fillStyle(body, 1)
+    gfx.fillCircle(ex, ey, DOT * iz)
+
+    // Name: white, sits above the horizontal line (origin bottom-left)
+    const tx = hx + GAP * iz
+    const ty = hy
+    name.setPosition(tx, ty - iz)          // 1 screen px above line
+    name.setScale(iz)
+    name.setText(startup?.nombre ?? '')
+    name.setVisible(true)
+
+    // Level: planet color, sits below the horizontal line (origin top-left)
+    lvl.setPosition(tx, ty + iz)           // 1 screen px below line
+    lvl.setScale(iz)
+    lvl.setText(`◆ ${NIVEL_NAMES[nivel] ?? ''}`)
+    lvl.setStyle({ color: colorStr })
+    lvl.setVisible(true)
   }
 
   _onPointerMove(ptr) {
@@ -264,6 +368,7 @@ export default class SpaceScene extends Phaser.Scene {
   _onPointerUp(ptr) {
     if (this._drag.state === DS.PRESS_WAIT) {
       // Tap on planet → select
+      this._selectedPlanet = this._drag.planet
       if (this._onSelectCallback) this._onSelectCallback(this._drag.planet.startup)
       this._resetDrag()
       return
@@ -288,6 +393,9 @@ export default class SpaceScene extends Phaser.Scene {
           MAX_ORBITAL_RADIUS
         )
         if (this._onOrbitClick) this._onOrbitClick(Math.round(radius))
+      } else {
+        // Tap on empty space → deselect
+        this._selectedPlanet = null
       }
     }
     this._panStart    = null

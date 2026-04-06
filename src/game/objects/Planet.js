@@ -30,16 +30,7 @@ export default class Planet extends Phaser.GameObjects.Container {
     this._gfx = g
     this.add(g)
 
-    this.add(
-      this.scene.add.text(r + 10, 0, this.startup?.nombre ?? '', {
-        fontSize: '10px',
-        fontFamily: 'ui-monospace, "Courier New", monospace',
-        color: '#cbd5e1',
-        stroke: '#000000',
-        strokeThickness: 3,
-        resolution: 2,
-      }).setOrigin(0, 0.5)
-    )
+    // Label is drawn by SpaceScene as a zoom-independent callout
   }
 
   /** Called by SpaceScene each frame to highlight on hover */
