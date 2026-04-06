@@ -212,28 +212,33 @@ export default class SpaceScene extends Phaser.Scene {
     })
 
     // Zoom anchored to cursor.
-    // ptr.worldX/Y is NOT reliably updated for wheel events in Phaser (it only
-    // refreshes on pointermove). Compute world position manually from ptr.x/y
-    // and the current camera state — these are always fresh.
     //
-    // worldX = ptr.x / zoom + scrollX  (assuming cam._x = 0, fullscreen camera)
-    // To keep worldX constant under cursor after zoom:
-    //   scrollX_new = worldX - ptr.x / newZoom
+    // Phaser 3.80 camera: scrollX = world at LEFT EDGE = midPoint.x - width/2
+    // Correct screen→world:  worldX = (ptr.x - width/2) / zoom + midPoint.x
+    // Correct world→screen:  screenX = (worldX - midPoint.x) * zoom + width/2
+    //
+    // To keep the world point under the cursor fixed after a zoom change:
+    //   newMidPoint.x = worldX - (ptr.x - width/2) / newZoom
+    //   newScrollX    = newMidPoint.x - width/2
+    //
+    // Using the factor form to avoid computing worldX explicitly:
+    //   newMidPoint.x = midPoint.x + (ptr.x - width/2) * (1/oldZoom - 1/newZoom)
     this.input.on('wheel', (ptr, _objs, _dx, dy) => {
       const cam     = this.cameras.main
       const oldZoom = cam.zoom
       const newZoom = Phaser.Math.Clamp(oldZoom * (1 - dy * 0.001), 0.15, 3.0)
       if (newZoom === oldZoom) return
 
-      // World point under cursor (computed from raw screen coords, not ptr.worldX)
-      const worldX = ptr.x / oldZoom + cam.scrollX
-      const worldY = ptr.y / oldZoom + cam.scrollY
+      const hw     = cam.width  * 0.5
+      const hh     = cam.height * 0.5
+      const factor = 1 / oldZoom - 1 / newZoom
+
+      const newMidX = cam.midPoint.x + (ptr.x - hw) * factor
+      const newMidY = cam.midPoint.y + (ptr.y - hh) * factor
 
       cam.setZoom(newZoom)
-
-      // Pin that world point to the same screen position
-      cam.scrollX = worldX - ptr.x / newZoom
-      cam.scrollY = worldY - ptr.y / newZoom
+      cam.scrollX = newMidX - hw
+      cam.scrollY = newMidY - hh
     })
   }
 
