@@ -1,25 +1,22 @@
 import { useEffect, useRef, forwardRef, useImperativeHandle } from 'react'
 import Phaser from 'phaser'
 import BootScene from './scenes/BootScene'
-import MapScene from './scenes/MapScene'
+import SpaceScene from './scenes/SpaceScene'
 
 const PhaserGame = forwardRef(function PhaserGame(
-  { onBuildingSelect, onEmptyTileClick, onStartupMove },
+  { onPlanetSelect, onOrbitClick, onStartupOrbit },
   ref
 ) {
-  const containerRef = useRef(null)
-  const gameRef      = useRef(null)
-  const mapSceneRef  = useRef(null)
+  const containerRef  = useRef(null)
+  const gameRef       = useRef(null)
+  const spaceSceneRef = useRef(null)
 
   useImperativeHandle(ref, () => ({
     syncStartups(startups) {
-      mapSceneRef.current?.syncStartups(startups, onBuildingSelect, onEmptyTileClick)
+      spaceSceneRef.current?.syncStartups(startups, onPlanetSelect, onOrbitClick)
     },
-    centerOn(col, row) {
-      mapSceneRef.current?.centerOn(col, row)
-    },
-    getMapData() {
-      return mapSceneRef.current?.getMapData() ?? null
+    centerOn(id) {
+      spaceSceneRef.current?.centerOn(id)
     },
   }))
 
@@ -29,51 +26,47 @@ const PhaserGame = forwardRef(function PhaserGame(
     const config = {
       type: Phaser.AUTO,
       parent: containerRef.current,
-      width: '100%',
-      height: '100%',
-      backgroundColor: '#1a1a2e',
-      scene: [BootScene, MapScene],
+      backgroundColor: '#05050f',
+      scene: [BootScene, SpaceScene],
       scale: {
         mode: Phaser.Scale.RESIZE,
+        width: '100%',
+        height: '100%',
         autoCenter: Phaser.Scale.CENTER_BOTH,
       },
-      render: { antialias: false, pixelArt: true },
+      render: { antialias: true, roundPixels: false },
     }
 
     const game = new Phaser.Game(config)
     gameRef.current = game
 
-    // When MapScene is ready, wire the startup:move event
-    const wireScene = () => {
-      const scene = game.scene.getScene('MapScene')
+    const wire = () => {
+      const scene = game.scene.getScene('SpaceScene')
       if (!scene) return
-      mapSceneRef.current = scene
-      scene.events.on('startup:move', (id, col, row) => {
-        if (onStartupMove) onStartupMove(id, col, row)
+      spaceSceneRef.current = scene
+      scene.events.on('startup:orbit', (id, radius) => {
+        if (onStartupOrbit) onStartupOrbit(id, radius)
       })
     }
 
-    game.events.on('ready', wireScene)
-    // Also try immediately (scene might already be running)
-    setTimeout(wireScene, 100)
+    game.events.on('ready', wire)
+    setTimeout(wire, 100)
 
     return () => {
       game.destroy(true)
-      gameRef.current  = null
-      mapSceneRef.current = null
+      gameRef.current       = null
+      spaceSceneRef.current = null
     }
   }, []) // eslint-disable-line
 
-  // Keep callbacks current without recreating the game
+  // Keep callbacks fresh without recreating the game
   useEffect(() => {
-    if (!mapSceneRef.current) return
-    mapSceneRef.current._onSelectCallback     = onBuildingSelect
-    mapSceneRef.current._onEmptyTileCallback  = onEmptyTileClick
-  }, [onBuildingSelect, onEmptyTileClick])
+    if (!spaceSceneRef.current) return
+    spaceSceneRef.current._onSelectCallback = onPlanetSelect
+    spaceSceneRef.current._onOrbitClick     = onOrbitClick
+  }, [onPlanetSelect, onOrbitClick])
 
-  return (
-    <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
-  )
+  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 })
 
 export default PhaserGame

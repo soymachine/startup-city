@@ -10,13 +10,14 @@ export default {
         pixel: ['"Press Start 2P"', 'monospace'],
       },
       colors: {
-        city: {
-          bg: '#1a1a2e',
-          panel: '#16213e',
-          accent: '#0f3460',
-          neon: '#e94560',
-          gold: '#f5a623',
-          green: '#4ade80',
+        space: {
+          bg:     '#05050f',
+          panel:  '#0a0a1e',
+          accent: '#15153a',
+          neon:   '#e94560',
+          gold:   '#f5a623',
+          green:  '#4ade80',
+          star:   '#a78bfa',
         }
       }
     },

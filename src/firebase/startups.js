@@ -45,13 +45,18 @@ export async function addStartup(data, userId) {
     descripcion: data.descripcion || '',
     nivel: 0,
     estado: 'activo',
-    pos_x: data.pos_x ?? 0,
-    pos_y: data.pos_y ?? 0,
-    zona: data.zona || 'centro',
+    orbital_radius: data.orbital_radius ?? 220,
     url: data.url || '',
     notas: data.notas || '',
     created_by: userId,
     created_at: serverTimestamp(),
+    updated_at: serverTimestamp(),
+  })
+}
+
+export async function updateStartupOrbitalRadius(id, radius) {
+  return updateDoc(doc(db, COLLECTION, id), {
+    orbital_radius: radius,
     updated_at: serverTimestamp(),
   })
 }
@@ -83,10 +88,3 @@ export async function deleteStartup(id) {
   return deleteDoc(doc(db, COLLECTION, id))
 }
 
-export async function updateStartupPosition(id, col, row) {
-  return updateDoc(doc(db, COLLECTION, id), {
-    pos_x: col,
-    pos_y: row,
-    updated_at: serverTimestamp(),
-  })
-}

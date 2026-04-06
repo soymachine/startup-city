@@ -43,7 +43,7 @@ export default function StartupPanel({ startup, onClose }) {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="flex items-start justify-between p-4 border-b border-city-accent">
+      <div className="flex items-start justify-between p-4 border-b border-space-accent">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-2xl">{nivelInfo.emoji}</span>
@@ -51,7 +51,7 @@ export default function StartupPanel({ startup, onClose }) {
               <input
                 value={form.nombre}
                 onChange={(e) => setForm({ ...form, nombre: e.target.value })}
-                className="flex-1 bg-city-bg border border-city-accent rounded px-2 py-1 text-white text-sm"
+                className="flex-1 bg-space-bg border border-space-accent rounded px-2 py-1 text-white text-sm"
               />
             ) : (
               <h2 className="text-white font-bold text-lg truncate">{startup.nombre}</h2>
@@ -68,7 +68,7 @@ export default function StartupPanel({ startup, onClose }) {
               <select
                 value={form.estado}
                 onChange={(e) => setForm({ ...form, estado: e.target.value })}
-                className="text-xs bg-city-bg border border-city-accent rounded px-2 py-0.5 text-white"
+                className="text-xs bg-space-bg border border-space-accent rounded px-2 py-0.5 text-white"
               >
                 {Object.entries(ESTADO_INFO).map(([key, val]) => (
                   <option key={key} value={key}>{val.label}</option>
@@ -93,13 +93,13 @@ export default function StartupPanel({ startup, onClose }) {
       </div>
 
       {/* Level controls */}
-      <div className="p-4 border-b border-city-accent">
-        <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Nivel del edificio</p>
+      <div className="p-4 border-b border-space-accent">
+        <p className="text-xs text-gray-400 uppercase tracking-wider mb-3">Nivel del planeta</p>
         <div className="flex items-center gap-3">
           <button
             onClick={handleBajar}
             disabled={nivel <= 0}
-            className="flex-1 py-2 bg-city-accent hover:bg-city-accent/80 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
+            className="flex-1 py-2 bg-space-accent hover:bg-space-accent/80 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors"
           >
             ↓ Bajar
           </button>
@@ -110,14 +110,14 @@ export default function StartupPanel({ startup, onClose }) {
           <button
             onClick={handleSubir}
             disabled={nivel >= 6}
-            className="flex-1 py-2 bg-city-neon hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors font-bold"
+            className="flex-1 py-2 bg-space-neon hover:bg-red-500 disabled:opacity-30 disabled:cursor-not-allowed text-white text-sm rounded-lg transition-colors font-bold"
           >
             ↑ Subir
           </button>
         </div>
 
         {/* Progress bar */}
-        <div className="mt-3 bg-city-bg rounded-full h-2">
+        <div className="mt-3 bg-space-bg rounded-full h-2">
           <div
             className="h-2 rounded-full transition-all duration-500"
             style={{
@@ -138,7 +138,7 @@ export default function StartupPanel({ startup, onClose }) {
             <textarea
               value={form.descripcion}
               onChange={(e) => setForm({ ...form, descripcion: e.target.value })}
-              className="w-full bg-city-bg border border-city-accent rounded px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-space-bg border border-space-accent rounded px-3 py-2 text-white text-sm resize-none"
               rows={3}
             />
           ) : (
@@ -155,7 +155,7 @@ export default function StartupPanel({ startup, onClose }) {
               type="url"
               value={form.url}
               onChange={(e) => setForm({ ...form, url: e.target.value })}
-              className="w-full bg-city-bg border border-city-accent rounded px-3 py-2 text-white text-sm"
+              className="w-full bg-space-bg border border-space-accent rounded px-3 py-2 text-white text-sm"
               placeholder="https://"
             />
           ) : startup.url ? (
@@ -180,7 +180,7 @@ export default function StartupPanel({ startup, onClose }) {
             <textarea
               value={form.notas}
               onChange={(e) => setForm({ ...form, notas: e.target.value })}
-              className="w-full bg-city-bg border border-city-accent rounded px-3 py-2 text-white text-sm resize-none"
+              className="w-full bg-space-bg border border-space-accent rounded px-3 py-2 text-white text-sm resize-none"
               rows={4}
               placeholder="Ideas, TODOs, links..."
             />
@@ -191,19 +191,19 @@ export default function StartupPanel({ startup, onClose }) {
       </div>
 
       {/* Actions */}
-      <div className="p-4 border-t border-city-accent space-y-2">
+      <div className="p-4 border-t border-space-accent space-y-2">
         {editing ? (
           <div className="flex gap-2">
             <button
               onClick={() => setEditing(false)}
-              className="flex-1 py-2 border border-city-accent text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
+              className="flex-1 py-2 border border-space-accent text-gray-400 hover:text-white rounded-lg text-sm transition-colors"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
               disabled={saving}
-              className="flex-1 py-2 bg-city-green hover:bg-green-400 disabled:opacity-50 text-black font-bold rounded-lg text-sm transition-colors"
+              className="flex-1 py-2 bg-space-green hover:bg-green-400 disabled:opacity-50 text-black font-bold rounded-lg text-sm transition-colors"
             >
               {saving ? 'Guardando...' : 'Guardar'}
             </button>
@@ -211,7 +211,7 @@ export default function StartupPanel({ startup, onClose }) {
         ) : (
           <button
             onClick={() => setEditing(true)}
-            className="w-full py-2 border border-city-accent hover:border-white text-gray-300 hover:text-white rounded-lg text-sm transition-colors"
+            className="w-full py-2 border border-space-accent hover:border-white text-gray-300 hover:text-white rounded-lg text-sm transition-colors"
           >
             Editar datos
           </button>
@@ -222,7 +222,7 @@ export default function StartupPanel({ startup, onClose }) {
             <div className="flex gap-2">
               <button
                 onClick={() => setConfirmDelete(false)}
-                className="flex-1 py-2 border border-city-accent text-gray-400 rounded-lg text-sm"
+                className="flex-1 py-2 border border-space-accent text-gray-400 rounded-lg text-sm"
               >
                 No
               </button>
