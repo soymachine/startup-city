@@ -16,7 +16,7 @@ export const PLANET_COLORS = [
 
 /** Orbital distance limits (world px) */
 export const MIN_ORBITAL_RADIUS = 110
-export const MAX_ORBITAL_RADIUS = 720
+export const MAX_ORBITAL_RADIUS = 1440
 export const DEFAULT_ORBITAL_RADIUS = 220
 
 /**

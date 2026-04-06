@@ -36,6 +36,7 @@ export default class SpaceScene extends Phaser.Scene {
     this.cameras.main.centerOn(0, 0)
     this.cameras.main.setZoom(0.85)
 
+    this._drawNebula()
     this._drawStarfield()
     this._drawSun()
 
@@ -154,43 +155,53 @@ export default class SpaceScene extends Phaser.Scene {
 
   // ── Background ──────────────────────────────────────────────────────────────
 
-  _drawStarfield() {
-    // Very sparse stars — we want near-black like the reference image
-    const gfx = this.add.graphics().setDepth(0)
-    const rng  = mulberry32(42)
-    const SPREAD = 2400
+  _drawNebula() {
+    // Radial colour gradient: warm amber at the core → cool indigo at the edge.
+    // Drawn as concentric stroked circles so each annulus has its own colour.
+    const gfx   = this.add.graphics().setDepth(-1)
+    const STEPS = 40
+    const MAX_R = 3000
+    const LW    = MAX_R / STEPS + 2   // each ring is just wide enough to tile
 
-    for (let i = 0; i < 200; i++) {
+    // Inner colour: amber 0xff7700 · Outer colour: deep indigo 0x1208c8
+    const iR = 0xff, iG = 0x77, iB = 0x00
+    const oR = 0x12, oG = 0x08, oB = 0xc8
+
+    for (let i = 0; i <= STEPS; i++) {
+      const t     = i / STEPS
+      const r     = Math.round(iR + (oR - iR) * t)
+      const g     = Math.round(iG + (oG - iG) * t)
+      const b     = Math.round(iB + (oB - iB) * t)
+      const color = (r << 16) | (g << 8) | b
+      // Alpha peaks at centre, decays smoothly toward the edge
+      const alpha = 0.01 + 0.07 * Math.pow(1 - t, 1.6)
+      gfx.lineStyle(LW, color, alpha)
+      gfx.strokeCircle(0, 0, t * MAX_R)
+    }
+  }
+
+  _drawStarfield() {
+    const gfx   = this.add.graphics().setDepth(0)
+    const rng   = mulberry32(42)
+    const SPREAD = 5000
+
+    for (let i = 0; i < 550; i++) {
       const x    = (rng() - 0.5) * SPREAD * 2
       const y    = (rng() - 0.5) * SPREAD * 2
-      const size = rng() < 0.12 ? 1.2 : 0.6
-      const alph = 0.15 + rng() * 0.35
+      const big  = rng() < 0.08
+      const size = big ? 1.4 : 0.7
+      const alph = big ? (0.4 + rng() * 0.5) : (0.12 + rng() * 0.28)
       gfx.fillStyle(0xffffff, alph)
       gfx.fillRect(x, y, size, size)
     }
   }
 
   _drawSun() {
-    // Minimal flat yellow circle — like the reference image
     const sun = this.add.graphics().setDepth(100)
-
-    // Very subtle outer warmth (just one faint ring)
     sun.fillStyle(0xffd60a, 0.08)
     sun.fillCircle(0, 0, 44)
-
-    // Main body — solid flat yellow
     sun.fillStyle(0xffd60a, 1.0)
     sun.fillCircle(0, 0, 28)
-
-    // Label below
-    this.add.text(0, 36, 'STARTUPSPACE', {
-      fontSize: '7px',
-      fontFamily: 'ui-monospace, "Courier New", monospace',
-      color: '#ffd60a',
-      stroke: '#000000',
-      strokeThickness: 2,
-      alpha: 0.7,
-    }).setOrigin(0.5, 0).setDepth(101)
   }
 
   // ── Input ────────────────────────────────────────────────────────────────────
