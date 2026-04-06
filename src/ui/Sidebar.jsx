@@ -42,8 +42,8 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
       <div className="p-4 border-b border-space-accent">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
-            <span className="text-xl">✦</span>
-            <span className="text-white font-bold text-sm">STARTUPSPACE</span>
+            <span className="text-xl text-yellow-400">✦</span>
+            <span className="text-yellow-400 font-bold text-sm tracking-widest">STARTUPSPACE</span>
           </div>
           <button onClick={() => setCollapsed(true)} className="text-gray-500 hover:text-white text-sm">←</button>
         </div>
