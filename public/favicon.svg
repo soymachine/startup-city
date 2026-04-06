@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" fill="#1a1a2e"/>
+  <!-- Isometric building -->
+  <polygon points="16,4 26,9 26,20 16,25 6,20 6,9" fill="#e94560" opacity="0.9"/>
+  <polygon points="16,4 26,9 16,14 6,9" fill="#ff6b8a"/>
+  <polygon points="6,9 16,14 16,25 6,20" fill="#b01d3f"/>
+  <polygon points="26,9 16,14 16,25 26,20" fill="#c42444"/>
+</svg>
