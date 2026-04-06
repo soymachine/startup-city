@@ -45,13 +45,15 @@ export default class SpaceScene extends Phaser.Scene {
 
     const FONT = 'ui-monospace, "Courier New", monospace'
     this._labelName = this.add.text(0, 0, '', {
-      fontSize: '11px', fontFamily: FONT,
-      color: '#ffffff', resolution: 2,
+      fontSize: '15px', fontFamily: FONT,
+      color: '#ffffff', stroke: '#000000', strokeThickness: 4,
+      resolution: 2,
     }).setOrigin(0, 1).setDepth(501).setVisible(false)
 
     this._labelLevel = this.add.text(0, 0, '', {
-      fontSize: '9px', fontFamily: FONT,
-      color: '#888888', resolution: 2,
+      fontSize: '11px', fontFamily: FONT,
+      color: '#888888', stroke: '#000000', strokeThickness: 3,
+      resolution: 2,
     }).setOrigin(0, 0).setDepth(501).setVisible(false)
 
     this._setupInput()
@@ -219,26 +221,28 @@ export default class SpaceScene extends Phaser.Scene {
     })
 
     // Zoom anchored to cursor.
-    // ptr.worldX/Y are correctly computed by Phaser (proven: hit-testing works).
-    // We derive new scrollX so the same world point stays under the cursor:
-    //   worldX = (ptr.x - cam._x) / oldZoom + scrollX
-    //   scrollX_new = worldX - (worldX - scrollX) * oldZoom / newZoom
-    // This eliminates any dependency on cam.x / cam._x.
+    // ptr.worldX/Y is NOT reliably updated for wheel events in Phaser (it only
+    // refreshes on pointermove). Compute world position manually from ptr.x/y
+    // and the current camera state — these are always fresh.
+    //
+    // worldX = ptr.x / zoom + scrollX  (assuming cam._x = 0, fullscreen camera)
+    // To keep worldX constant under cursor after zoom:
+    //   scrollX_new = worldX - ptr.x / newZoom
     this.input.on('wheel', (ptr, _objs, _dx, dy) => {
       const cam     = this.cameras.main
       const oldZoom = cam.zoom
       const newZoom = Phaser.Math.Clamp(oldZoom * (1 - dy * 0.001), 0.15, 3.0)
       if (newZoom === oldZoom) return
 
-      const worldX  = ptr.worldX
-      const worldY  = ptr.worldY
-      const sx      = cam.scrollX
-      const sy      = cam.scrollY
-      const ratio   = oldZoom / newZoom
+      // World point under cursor (computed from raw screen coords, not ptr.worldX)
+      const worldX = ptr.x / oldZoom + cam.scrollX
+      const worldY = ptr.y / oldZoom + cam.scrollY
 
       cam.setZoom(newZoom)
-      cam.scrollX = worldX - (worldX - sx) * ratio
-      cam.scrollY = worldY - (worldY - sy) * ratio
+
+      // Pin that world point to the same screen position
+      cam.scrollX = worldX - ptr.x / newZoom
+      cam.scrollY = worldY - ptr.y / newZoom
     })
   }
 
