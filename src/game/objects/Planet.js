@@ -49,10 +49,11 @@ export default class Planet extends Phaser.GameObjects.Container {
     ).setOrigin(0, 0.5)
     this.add(label)
 
-    // Interactive hit zone (uses the halo radius for easier clicking)
-    const hz = this.scene.add.zone(0, 0, (r + 14) * 2, (r + 14) * 2)
+    // Hit zone: planet body + at least 18px padding, minimum 26px total
+    const hitR = Math.max(26, r + 18)
+    const hz = this.scene.add.zone(0, 0, hitR * 2, hitR * 2)
     hz.setInteractive(
-      new Phaser.Geom.Circle(0, 0, r + 14),
+      new Phaser.Geom.Circle(0, 0, hitR),
       Phaser.Geom.Circle.Contains
     )
     this.add(hz)

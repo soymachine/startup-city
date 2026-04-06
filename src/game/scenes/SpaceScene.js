@@ -113,7 +113,7 @@ export default class SpaceScene extends Phaser.Scene {
 
       const currentAngle = idToAngle(startup.id) + orbitalSpeed(radius) * this._time
 
-      g.lineStyle(lineW, body, 0.65)
+      g.lineStyle(lineW, body, 0.50)
 
       if (nivel >= 6) {
         // Full circle trail
@@ -191,19 +191,26 @@ export default class SpaceScene extends Phaser.Scene {
       this._onPointerUp(ptr)
     })
 
-    // Zoom centred on cursor
+    // Zoom anchored to cursor position
     this.input.on('wheel', (ptr, _objs, _dx, dy) => {
       const cam     = this.cameras.main
       const oldZoom = cam.zoom
       const newZoom = Phaser.Math.Clamp(oldZoom * (1 - dy * 0.001), 0.15, 3.0)
+      if (newZoom === oldZoom) return
 
-      // World position under cursor — keep fixed
-      const wx = cam.scrollX + ptr.x / oldZoom
-      const wy = cam.scrollY + ptr.y / oldZoom
+      // World coords under cursor BEFORE the zoom change.
+      // worldView.x/y is the top-left corner of what the camera sees.
+      const wx = cam.worldView.x + ptr.x / oldZoom
+      const wy = cam.worldView.y + ptr.y / oldZoom
 
       cam.setZoom(newZoom)
-      cam.scrollX = wx - ptr.x / newZoom
-      cam.scrollY = wy - ptr.y / newZoom
+
+      // After zoom, scrollX/Y is the world coord at the camera CENTRE.
+      // worldView.x = scrollX - camWidth/(2*zoom)
+      // We want: worldView.x_new + ptr.x/newZoom = wx
+      // → scrollX_new = wx - ptr.x/newZoom + camWidth/(2*newZoom)
+      cam.scrollX = wx - ptr.x / newZoom + cam.width  / (2 * newZoom)
+      cam.scrollY = wy - ptr.y / newZoom + cam.height / (2 * newZoom)
     })
   }
 

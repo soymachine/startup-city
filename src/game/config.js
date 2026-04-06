@@ -3,15 +3,15 @@
 /** Visual radius (px) of each planet per development nivel */
 export const PLANET_RADII = [10, 14, 20, 28, 38, 52, 68]
 
-/** Body + glow colour per nivel */
+/** Body colour per nivel — yellow (#ffd60a) is reserved for the sun */
 export const PLANET_COLORS = [
-  { body: 0x9ca3af, glow: 0x6b7280 },  // 0 — gray  (idea)
-  { body: 0x60a5fa, glow: 0x3b82f6 },  // 1 — blue  (defining)
-  { body: 0x34d399, glow: 0x10b981 },  // 2 — green (prototype)
-  { body: 0xa78bfa, glow: 0x8b5cf6 },  // 3 — purple (private beta)
-  { body: 0xfbbf24, glow: 0xf59e0b },  // 4 — gold  (public beta)
-  { body: 0xfb923c, glow: 0xf97316 },  // 5 — orange (traction)
-  { body: 0xf87171, glow: 0xef4444 },  // 6 — red   (scale-up)
+  { body: 0x94a3b8 },  // 0 — slate   (idea)
+  { body: 0x60a5fa },  // 1 — blue    (defining)
+  { body: 0x34d399 },  // 2 — emerald (prototype)
+  { body: 0xa78bfa },  // 3 — violet  (private beta)
+  { body: 0x22d3ee },  // 4 — cyan    (public beta)
+  { body: 0xfb923c },  // 5 — orange  (traction)
+  { body: 0xf87171 },  // 6 — rose    (scale-up)
 ]
 
 /** Orbital distance limits (world px) */
