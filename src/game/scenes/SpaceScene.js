@@ -196,24 +196,19 @@ export default class SpaceScene extends Phaser.Scene {
       this._onPointerUp(ptr)
     })
 
-    // Zoom anchored to cursor — use getWorldPoint so Phaser handles
-    // all internal coordinate transforms (scrollX is world at centre,
-    // not top-left, and RESIZE mode can change cam dimensions mid-session).
+    // Zoom anchored to cursor.
+    // Formula: worldX = (screenX - cam.x) / zoom + scrollX
+    // To keep worldX constant under cursor: scrollX_new = scrollX + (screenX - cam.x) * (1/oldZoom - 1/newZoom)
     this.input.on('wheel', (ptr, _objs, _dx, dy) => {
       const cam     = this.cameras.main
       const oldZoom = cam.zoom
       const newZoom = Phaser.Math.Clamp(oldZoom * (1 - dy * 0.001), 0.15, 3.0)
       if (newZoom === oldZoom) return
 
-      // World point under cursor BEFORE zoom
-      const before = cam.getWorldPoint(ptr.x, ptr.y)
-
+      const factor  = 1 / oldZoom - 1 / newZoom
+      cam.scrollX  += (ptr.x - cam.x) * factor
+      cam.scrollY  += (ptr.y - cam.y) * factor
       cam.setZoom(newZoom)
-
-      // World point under cursor AFTER zoom (has drifted) — cancel the drift
-      const after = cam.getWorldPoint(ptr.x, ptr.y)
-      cam.scrollX -= after.x - before.x
-      cam.scrollY -= after.y - before.y
     })
   }
 
