@@ -7,9 +7,15 @@ const PhaserGame = forwardRef(function PhaserGame(
   { onPlanetSelect, onOrbitClick, onStartupOrbit, gradientInner, gradientOuter },
   ref
 ) {
-  const containerRef  = useRef(null)
-  const gameRef       = useRef(null)
-  const spaceSceneRef = useRef(null)
+  const containerRef     = useRef(null)
+  const gameRef          = useRef(null)
+  const spaceSceneRef    = useRef(null)
+  const gradientInnerRef = useRef(gradientInner ?? '#1464c8')
+  const gradientOuterRef = useRef(gradientOuter ?? '#03050f')
+
+  // Keep colour refs in sync with props (no re-render cost)
+  useEffect(() => { gradientInnerRef.current = gradientInner ?? '#1464c8' }, [gradientInner])
+  useEffect(() => { gradientOuterRef.current = gradientOuter ?? '#03050f' }, [gradientOuter])
 
   useImperativeHandle(ref, () => ({
     syncStartups(startups) {
@@ -52,7 +58,37 @@ const PhaserGame = forwardRef(function PhaserGame(
     game.events.on('ready', wire)
     setTimeout(wire, 100)
 
+    // ── Per-frame: keep gradient centred on the sun (world origin 0,0) ──
+    // We write directly to the DOM to avoid triggering React re-renders at 60 fps.
+    const onStep = () => {
+      const el = containerRef.current
+      if (!el) return
+
+      const scene = game.scene.getScene('SpaceScene')
+      const cam   = scene?.cameras?.main
+
+      let pctX = 50
+      let pctY = 50
+
+      if (cam) {
+        const w = el.clientWidth
+        const h = el.clientHeight
+        if (w > 0 && h > 0) {
+          // Sun lives at world (0,0). screenX = (worldX - scrollX) * zoom
+          pctX = ((0 - cam.scrollX) * cam.zoom / w) * 100
+          pctY = ((0 - cam.scrollY) * cam.zoom / h) * 100
+        }
+      }
+
+      el.style.background =
+        `radial-gradient(ellipse at ${pctX.toFixed(2)}% ${pctY.toFixed(2)}%, ` +
+        `${gradientInnerRef.current} 0%, ${gradientOuterRef.current} 100%)`
+    }
+
+    game.events.on('step', onStep)
+
     return () => {
+      game.events.off('step', onStep)
       game.destroy(true)
       gameRef.current       = null
       spaceSceneRef.current = null
@@ -66,15 +102,8 @@ const PhaserGame = forwardRef(function PhaserGame(
     spaceSceneRef.current._onOrbitClick     = onOrbitClick
   }, [onPlanetSelect, onOrbitClick])
 
-  return (
-    <div
-      ref={containerRef}
-      style={{
-        position: 'absolute', inset: 0,
-        background: `radial-gradient(ellipse at 50% 50%, ${gradientInner ?? '#1464c8'} 0%, ${gradientOuter ?? '#03050f'} 100%)`,
-      }}
-    />
-  )
+  // No background style here — the step listener owns it
+  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
 })
 
 export default PhaserGame
