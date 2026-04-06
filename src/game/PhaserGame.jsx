@@ -4,7 +4,7 @@ import BootScene from './scenes/BootScene'
 import SpaceScene from './scenes/SpaceScene'
 
 const PhaserGame = forwardRef(function PhaserGame(
-  { onPlanetSelect, onOrbitClick, onStartupOrbit },
+  { onPlanetSelect, onOrbitClick, onStartupOrbit, gradientInner, gradientOuter },
   ref
 ) {
   const containerRef  = useRef(null)
@@ -71,7 +71,7 @@ const PhaserGame = forwardRef(function PhaserGame(
       ref={containerRef}
       style={{
         position: 'absolute', inset: 0,
-        background: 'radial-gradient(ellipse at 50% 50%, #c0e8ff 0%, #1878d0 18%, #0a1a60 42%, #060a20 70%, #030510 100%)',
+        background: `radial-gradient(ellipse at 50% 50%, ${gradientInner ?? '#1464c8'} 0%, ${gradientOuter ?? '#03050f'} 100%)`,
       }}
     />
   )

@@ -6,6 +6,7 @@ import Login from './ui/Login'
 import Sidebar from './ui/Sidebar'
 import StartupPanel from './ui/StartupPanel'
 import StartupForm from './ui/StartupForm'
+import SettingsModal from './ui/SettingsModal'
 import PhaserGame from './game/PhaserGame'
 
 export default function App() {
@@ -15,6 +16,8 @@ export default function App() {
   const [selected, setSelected]       = useState(null)
   const [newOrbit, setNewOrbit]       = useState(null)   // orbital_radius for new startup
   const [notification, setNotification] = useState(null)
+  const [showSettings, setShowSettings] = useState(false)
+  const [bgColors, setBgColors]         = useState({ inner: '#1464c8', outer: '#03050f' })
   const phaserRef    = useRef(null)
   const prevStartups = useRef([])
 
@@ -111,7 +114,18 @@ export default function App() {
           onPlanetSelect={handlePlanetSelect}
           onOrbitClick={handleOrbitClick}
           onStartupOrbit={handleStartupOrbit}
+          gradientInner={bgColors.inner}
+          gradientOuter={bgColors.outer}
         />
+
+        {/* Settings button */}
+        <button
+          onClick={() => setShowSettings(true)}
+          className="absolute top-4 right-4 z-20 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 text-white/60 hover:text-white transition-all backdrop-blur-sm border border-white/10"
+          title="Ajustes de fondo"
+        >
+          ⚙
+        </button>
 
         {startups.length === 0 && (
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 pointer-events-none text-center">
@@ -146,6 +160,13 @@ export default function App() {
             />
           )}
         </div>
+      )}
+      {showSettings && (
+        <SettingsModal
+          colors={bgColors}
+          onChange={setBgColors}
+          onClose={() => setShowSettings(false)}
+        />
       )}
     </div>
   )
