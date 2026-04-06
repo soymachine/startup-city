@@ -1,6 +1,6 @@
 /**
- * Planet — a startup rendered as an orbiting planet.
- * Position is set externally each frame by SpaceScene.
+ * Planet — flat-color circle + outer selection halo.
+ * No glow, no specular — clean minimalist aesthetic.
  * Emits 'planet:pointerdown' on the scene event emitter.
  */
 import Phaser from 'phaser'
@@ -20,52 +20,49 @@ export default class Planet extends Phaser.GameObjects.Container {
 
     const nivel  = this.startup?.nivel ?? 0
     const r      = PLANET_RADII[nivel]
-    const { body, glow } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
+    const { body } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
 
     const g = this.scene.add.graphics()
 
-    // Outer glow rings (furthest → nearest)
-    g.fillStyle(glow, 0.06); g.fillCircle(0, 0, r + 28)
-    g.fillStyle(glow, 0.10); g.fillCircle(0, 0, r + 18)
-    g.fillStyle(glow, 0.18); g.fillCircle(0, 0, r + 10)
-    g.fillStyle(glow, 0.30); g.fillCircle(0, 0, r + 5)
+    // Outer halo — used as visual selection/hover affordance
+    g.fillStyle(body, 0.20)
+    g.fillCircle(0, 0, r + 11)
 
-    // Planet body
+    // Planet body — flat, no gradients
     g.fillStyle(body, 1.0)
     g.fillCircle(0, 0, r)
 
-    // Specular highlight
-    g.fillStyle(0xffffff, 0.30)
-    g.fillCircle(-r * 0.28, -r * 0.32, r * 0.38)
-
     this.add(g)
 
-    // Name label
+    // Name label — small, to the right of the planet
     const label = this.scene.add.text(
-      0, r + 10,
+      r + 8, 0,
       this.startup?.nombre ?? '',
       {
-        fontSize: '11px',
-        fontFamily: 'ui-monospace, monospace',
-        color: '#e2e8f0',
-        stroke: '#05050f',
-        strokeThickness: 4,
+        fontSize: '10px',
+        fontFamily: 'ui-monospace, "Courier New", monospace',
+        color: '#cbd5e1',
+        stroke: '#000000',
+        strokeThickness: 3,
         resolution: 2,
       }
-    ).setOrigin(0.5, 0)
+    ).setOrigin(0, 0.5)
     this.add(label)
 
-    // Hit zone
-    const hz = this.scene.add.zone(0, 0, (r + 12) * 2, (r + 12) * 2)
-    hz.setInteractive(new Phaser.Geom.Circle(0, 0, r + 12), Phaser.Geom.Circle.Contains)
+    // Interactive hit zone (uses the halo radius for easier clicking)
+    const hz = this.scene.add.zone(0, 0, (r + 14) * 2, (r + 14) * 2)
+    hz.setInteractive(
+      new Phaser.Geom.Circle(0, 0, r + 14),
+      Phaser.Geom.Circle.Contains
+    )
     this.add(hz)
 
     hz.on('pointerover', () => {
-      this.setScale(1.08)
+      g.setAlpha(1.3)  // brightens the halo
       this.scene.input.setDefaultCursor('grab')
     })
     hz.on('pointerout', () => {
-      this.setScale(1)
+      g.setAlpha(1)
       this.scene.input.setDefaultCursor('default')
     })
     hz.on('pointerdown', (ptr) => {
@@ -75,7 +72,7 @@ export default class Planet extends Phaser.GameObjects.Container {
 
   update(startup) {
     const changed =
-      startup.nivel !== this.startup?.nivel ||
+      startup.nivel  !== this.startup?.nivel ||
       startup.nombre !== this.startup?.nombre
     this.startup = startup
     if (changed) this._draw()
@@ -84,8 +81,8 @@ export default class Planet extends Phaser.GameObjects.Container {
   pulseAnimation() {
     this.scene.tweens.add({
       targets: this,
-      scaleX: 1.25, scaleY: 1.25,
-      duration: 250,
+      scaleX: 1.3, scaleY: 1.3,
+      duration: 220,
       yoyo: true,
       repeat: 2,
       ease: 'Sine.easeInOut',

@@ -11,9 +11,9 @@ export default {
       },
       colors: {
         space: {
-          bg:     '#05050f',
-          panel:  '#0a0a1e',
-          accent: '#15153a',
+          bg:     '#000000',
+          panel:  '#080810',
+          accent: '#10102a',
           neon:   '#e94560',
           gold:   '#f5a623',
           green:  '#4ade80',

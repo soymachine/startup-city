@@ -9,9 +9,6 @@ import Planet from '../objects/Planet'
 // Drag state machine
 const DS = { IDLE: 0, PRESS_WAIT: 1, DRAGGING: 2 }
 
-// Palette used for orbital ring tints
-const RING_COLOR = 0x4a4a8f
-
 export default class SpaceScene extends Phaser.Scene {
   constructor() {
     super({ key: 'SpaceScene' })
@@ -29,12 +26,11 @@ export default class SpaceScene extends Phaser.Scene {
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   create() {
-    this.cameras.main.setBackgroundColor('#05050f')
+    this.cameras.main.setBackgroundColor('#000000')
     this.cameras.main.centerOn(0, 0)
     this.cameras.main.setZoom(0.85)
 
     this._drawStarfield()
-    this._drawNebula()
     this._drawSun()
 
     this._ringGfx = this.add.graphics().setDepth(50)
@@ -47,7 +43,7 @@ export default class SpaceScene extends Phaser.Scene {
   update(time) {
     this._time = time
     this._updatePlanetPositions(time)
-    this._drawOrbitalRings()
+    this._drawOrbitsAndTrails()
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -93,118 +89,82 @@ export default class SpaceScene extends Phaser.Scene {
     }
   }
 
-  // ── Orbital ring drawing ─────────────────────────────────────────────────────
+  // ── Orbits + trail arcs (redrawn every frame) ───────────────────────────────
 
-  _drawOrbitalRings() {
+  _drawOrbitsAndTrails() {
     const g = this._ringGfx
     g.clear()
 
     for (const [, planet] of this._planets) {
-      const radius = planet.startup.orbital_radius ?? DEFAULT_ORBITAL_RADIUS
-      const nivel  = planet.startup.nivel ?? 0
-      const { glow } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
-      g.lineStyle(1, glow, 0.18)
+      const { startup } = planet
+      const radius = startup.orbital_radius ?? DEFAULT_ORBITAL_RADIUS
+      const nivel  = startup.nivel ?? 0
+      const { body } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
+
+      // ── Thin orbit ring — planet color, very faint ──
+      g.lineStyle(1, body, 0.12)
       g.strokeCircle(0, 0, radius)
+
+      // ── Trail arc behind the planet ──
+      // At nivel 0 → ~25°, at nivel 6 → full 360°
+      const MIN_ARC = 0.44   // ≈ 25 degrees in radians
+      const arcLen  = MIN_ARC + (nivel / 6) * (Math.PI * 2 - MIN_ARC)
+      const lineW   = 2 + nivel * 0.55   // 2px at nivel 0 → 5.3px at nivel 6
+
+      const currentAngle = idToAngle(startup.id) + orbitalSpeed(radius) * this._time
+
+      g.lineStyle(lineW, body, 0.65)
+
+      if (nivel >= 6) {
+        // Full circle trail
+        g.strokeCircle(0, 0, radius)
+      } else {
+        g.beginPath()
+        // Clockwise arc from (currentAngle - arcLen) to currentAngle
+        g.arc(0, 0, radius, currentAngle - arcLen, currentAngle, false)
+        g.strokePath()
+      }
     }
   }
 
   // ── Background ──────────────────────────────────────────────────────────────
 
   _drawStarfield() {
-    const starGfx = this.add.graphics().setDepth(0)
-    const rng     = mulberry32(42)
-    const SPREAD  = 2200
+    // Very sparse stars — we want near-black like the reference image
+    const gfx = this.add.graphics().setDepth(0)
+    const rng  = mulberry32(42)
+    const SPREAD = 2400
 
-    // Background star layer
-    for (let i = 0; i < 600; i++) {
+    for (let i = 0; i < 200; i++) {
       const x    = (rng() - 0.5) * SPREAD * 2
       const y    = (rng() - 0.5) * SPREAD * 2
-      const size = rng() < 0.15 ? 1.5 : rng() < 0.5 ? 1 : 0.5
-      const alph = 0.3 + rng() * 0.7
-      starGfx.fillStyle(0xffffff, alph)
-      if (size >= 1.5) starGfx.fillCircle(x, y, size)
-      else starGfx.fillRect(x, y, size, size)
-    }
-
-    // A few bright twinkling stars (individual objects for tween)
-    for (let i = 0; i < 25; i++) {
-      const x = (rng() - 0.5) * SPREAD * 2
-      const y = (rng() - 0.5) * SPREAD * 2
-      const s = this.add.graphics().setDepth(1)
-      s.fillStyle(0xffffff, 1); s.fillCircle(x, y, 1.5)
-      this.tweens.add({
-        targets: s,
-        alpha: { from: 0.15, to: 1 },
-        duration: 1000 + rng() * 3000,
-        yoyo: true, repeat: -1,
-        ease: 'Sine.easeInOut',
-        delay: rng() * 4000,
-      })
-    }
-  }
-
-  _drawNebula() {
-    const rng = mulberry32(99)
-    const blobs = [
-      { x: -600, y: -300, r: 350, color: 0x1a1060, a: 0.55 },
-      { x:  500, y:  400, r: 280, color: 0x400060, a: 0.40 },
-      { x: -200, y:  500, r: 200, color: 0x003050, a: 0.35 },
-      { x:  700, y: -200, r: 240, color: 0x200060, a: 0.30 },
-    ]
-    for (const b of blobs) {
-      const g = this.add.graphics().setDepth(2)
-      for (let i = 5; i >= 0; i--) {
-        g.fillStyle(b.color, b.a * (i / 6) * 0.6)
-        g.fillCircle(b.x, b.y, b.r * (1 - i * 0.1))
-      }
+      const size = rng() < 0.12 ? 1.2 : 0.6
+      const alph = 0.15 + rng() * 0.35
+      gfx.fillStyle(0xffffff, alph)
+      gfx.fillRect(x, y, size, size)
     }
   }
 
   _drawSun() {
-    const sun  = this.add.graphics().setDepth(100)
-    const glow = this.add.graphics().setDepth(99)
+    // Minimal flat yellow circle — like the reference image
+    const sun = this.add.graphics().setDepth(100)
 
-    // Glow layers
-    const glowData = [
-      { r: 180, a: 0.04 }, { r: 130, a: 0.07 },
-      { r: 90,  a: 0.12 }, { r: 65,  a: 0.20 },
-    ]
-    for (const d of glowData) {
-      glow.fillStyle(0xfffbe6, d.a)
-      glow.fillCircle(0, 0, d.r)
-    }
+    // Very subtle outer warmth (just one faint ring)
+    sun.fillStyle(0xffd60a, 0.08)
+    sun.fillCircle(0, 0, 44)
 
-    // Pulse the glow
-    this.tweens.add({
-      targets: glow,
-      alpha: { from: 0.6, to: 1.0 },
-      scale: { from: 0.95, to: 1.05 },
-      duration: 3000, yoyo: true, repeat: -1,
-      ease: 'Sine.easeInOut',
-    })
+    // Main body — solid flat yellow
+    sun.fillStyle(0xffd60a, 1.0)
+    sun.fillCircle(0, 0, 28)
 
-    // Sun body
-    sun.fillStyle(0xfffde8, 1.0); sun.fillCircle(0, 0, 32)
-    sun.fillStyle(0xffd700, 0.8); sun.fillCircle(0, 0, 24)
-    sun.fillStyle(0xffffff, 0.9); sun.fillCircle(0, 0, 14)
-
-    // Corona spikes (8 rays)
-    sun.lineStyle(2, 0xffd700, 0.5)
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2
-      sun.lineBetween(
-        Math.cos(a) * 34, Math.sin(a) * 34,
-        Math.cos(a) * 52, Math.sin(a) * 52
-      )
-    }
-
-    // "STARTUPSPACE" label under sun
-    this.add.text(0, 46, '✦ STARTUPSPACE ✦', {
-      fontSize: '9px',
-      fontFamily: '"Press Start 2P", monospace',
-      color: '#ffd700',
-      stroke: '#05050f',
-      strokeThickness: 3,
+    // Label below
+    this.add.text(0, 36, 'STARTUPSPACE', {
+      fontSize: '7px',
+      fontFamily: 'ui-monospace, "Courier New", monospace',
+      color: '#ffd60a',
+      stroke: '#000000',
+      strokeThickness: 2,
+      alpha: 0.7,
     }).setOrigin(0.5, 0).setDepth(101)
   }
 
@@ -337,11 +297,11 @@ export default class SpaceScene extends Phaser.Scene {
     planet.setPosition(newRadius * Math.cos(angle), newRadius * Math.sin(angle))
 
     // Draw ghost ring at new radius
-    const nivel     = planet.startup.nivel ?? 0
-    const { glow }  = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
-    const g         = this._dragGfx
+    const nivel    = planet.startup.nivel ?? 0
+    const { body } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
+    const g        = this._dragGfx
     g.clear()
-    g.lineStyle(1.5, glow, 0.5)
+    g.lineStyle(1, body, 0.35)
     g.strokeCircle(0, 0, newRadius)
 
     // Radius label
