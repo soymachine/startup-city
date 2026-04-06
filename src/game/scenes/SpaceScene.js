@@ -45,7 +45,7 @@ export default class SpaceScene extends Phaser.Scene {
 
     const FONT = 'ui-monospace, "Courier New", monospace'
     this._labelName = this.add.text(0, 0, '', {
-      fontSize: '15px', fontFamily: FONT,
+      fontSize: '19px', fontFamily: FONT,
       color: '#ffffff', stroke: '#000000', strokeThickness: 4,
       resolution: 2,
     }).setOrigin(0, 1).setDepth(501).setVisible(false)
