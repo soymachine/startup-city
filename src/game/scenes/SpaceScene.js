@@ -44,6 +44,7 @@ export default class SpaceScene extends Phaser.Scene {
     this._time = time
     this._updatePlanetPositions(time)
     this._drawOrbitsAndTrails()
+    this._updateHover()
   }
 
   // ── Public API ──────────────────────────────────────────────────────────────
@@ -171,14 +172,18 @@ export default class SpaceScene extends Phaser.Scene {
   // ── Input ────────────────────────────────────────────────────────────────────
 
   _setupInput() {
-    this.events.on('planet:pointerdown', this._onPlanetDown, this)
-
     this.input.on('pointerdown', (ptr) => {
-      if (!this._camEnabled || this._drag.state !== DS.IDLE) return
-      this._panStart = {
-        px: ptr.x, py: ptr.y,
-        sx: this.cameras.main.scrollX,
-        sy: this.cameras.main.scrollY,
+      if (this._drag.state !== DS.IDLE) return
+      const planet = this._findPlanetAt(ptr.worldX, ptr.worldY)
+      if (planet) {
+        this._camEnabled = false
+        this._drag = { state: DS.PRESS_WAIT, planet, startX: ptr.worldX, startY: ptr.worldY }
+      } else {
+        this._panStart = {
+          px: ptr.x, py: ptr.y,
+          sx: this.cameras.main.scrollX,
+          sy: this.cameras.main.scrollY,
+        }
       }
     })
 
@@ -212,15 +217,23 @@ export default class SpaceScene extends Phaser.Scene {
     })
   }
 
-  _onPlanetDown(planet, ptr) {
-    this._panStart    = null
-    this._camEnabled  = false
-    this._drag = {
-      state: DS.PRESS_WAIT,
-      planet,
-      startX: ptr.worldX,
-      startY: ptr.worldY,
+  _findPlanetAt(worldX, worldY) {
+    for (const [, planet] of this._planets) {
+      const nivel = planet.startup?.nivel ?? 0
+      const hitR  = Math.max(26, PLANET_RADII[nivel] + 18)
+      const dx = worldX - planet.x
+      const dy = worldY - planet.y
+      if (dx * dx + dy * dy <= hitR * hitR) return planet
     }
+    return null
+  }
+
+  _updateHover() {
+    if (this._drag.state !== DS.IDLE) return
+    const ptr     = this.input.activePointer
+    const hovered = this._findPlanetAt(ptr.worldX, ptr.worldY)
+    for (const [, planet] of this._planets) planet.setHovered(planet === hovered)
+    this.input.setDefaultCursor(hovered ? 'grab' : 'default')
   }
 
   _onPointerMove(ptr) {
