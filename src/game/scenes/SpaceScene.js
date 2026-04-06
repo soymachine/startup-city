@@ -197,18 +197,26 @@ export default class SpaceScene extends Phaser.Scene {
     })
 
     // Zoom anchored to cursor.
-    // Formula: worldX = (screenX - cam.x) / zoom + scrollX
-    // To keep worldX constant under cursor: scrollX_new = scrollX + (screenX - cam.x) * (1/oldZoom - 1/newZoom)
+    // ptr.worldX/Y are correctly computed by Phaser (proven: hit-testing works).
+    // We derive new scrollX so the same world point stays under the cursor:
+    //   worldX = (ptr.x - cam._x) / oldZoom + scrollX
+    //   scrollX_new = worldX - (worldX - scrollX) * oldZoom / newZoom
+    // This eliminates any dependency on cam.x / cam._x.
     this.input.on('wheel', (ptr, _objs, _dx, dy) => {
       const cam     = this.cameras.main
       const oldZoom = cam.zoom
       const newZoom = Phaser.Math.Clamp(oldZoom * (1 - dy * 0.001), 0.15, 3.0)
       if (newZoom === oldZoom) return
 
-      const factor  = 1 / oldZoom - 1 / newZoom
-      cam.scrollX  += (ptr.x - cam.x) * factor
-      cam.scrollY  += (ptr.y - cam.y) * factor
+      const worldX  = ptr.worldX
+      const worldY  = ptr.worldY
+      const sx      = cam.scrollX
+      const sy      = cam.scrollY
+      const ratio   = oldZoom / newZoom
+
       cam.setZoom(newZoom)
+      cam.scrollX = worldX - (worldX - sx) * ratio
+      cam.scrollY = worldY - (worldY - sy) * ratio
     })
   }
 
