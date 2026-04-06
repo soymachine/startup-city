@@ -50,24 +50,6 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
         <p className="text-xs text-gray-500 truncate">{user.email}</p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-px bg-space-accent">
-        <div className="bg-space-panel p-3 text-center">
-          <div className="text-xl font-bold text-white">{stats.total}</div>
-          <div className="text-xs text-gray-400">Total</div>
-        </div>
-        <div className="bg-space-panel p-3 text-center">
-          <div className="text-xl font-bold text-space-green">{stats.activos}</div>
-          <div className="text-xs text-gray-400">Activas</div>
-        </div>
-        <div className="bg-space-panel p-3 text-center">
-          <div className="text-xl font-bold text-space-gold">
-            {NIVEL_INFO[stats.maxNivel]?.emoji ?? 'I'}
-          </div>
-          <div className="text-xs text-gray-400">Max nivel</div>
-        </div>
-      </div>
-
       {/* Filters */}
       <div className="p-3 space-y-2 border-b border-space-accent">
         <input

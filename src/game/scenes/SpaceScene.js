@@ -32,11 +32,9 @@ export default class SpaceScene extends Phaser.Scene {
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   create() {
-    this.cameras.main.setBackgroundColor('#060a18')
     this.cameras.main.centerOn(0, 0)
     this.cameras.main.setZoom(0.85)
 
-    this._drawNebula()
     this._drawStarfield()
     this._drawSun()
 
@@ -154,42 +152,6 @@ export default class SpaceScene extends Phaser.Scene {
   }
 
   // ── Background ──────────────────────────────────────────────────────────────
-
-  _drawNebula() {
-    // Radial gradient matching reference: bright cyan-white core → vivid blue → deep indigo.
-    // Each step is a stroked circle wide enough to tile with its neighbours.
-    const gfx   = this.add.graphics().setDepth(-1)
-    const STEPS = 50
-    const MAX_R = 2800
-    const LW    = MAX_R / STEPS + 2
-
-    // Core: near-white cyan 0xc8eeff → mid: vivid blue 0x1464c8 → outer: dark indigo 0x06091a
-    // We split into two segments for a natural S-curve feel.
-    for (let i = 0; i <= STEPS; i++) {
-      const t = i / STEPS   // 0 = centre, 1 = outer edge
-
-      let r, g, b
-      if (t < 0.4) {
-        // Core → mid-blue  (bright cyan-white to vivid blue)
-        const s = t / 0.4
-        r = Math.round(0xc8 + (0x14 - 0xc8) * s)
-        g = Math.round(0xee + (0x64 - 0xee) * s)
-        b = Math.round(0xff + (0xc8 - 0xff) * s)
-      } else {
-        // Mid-blue → dark indigo
-        const s = (t - 0.4) / 0.6
-        r = Math.round(0x14 + (0x06 - 0x14) * s)
-        g = Math.round(0x64 + (0x09 - 0x64) * s)
-        b = Math.round(0xc8 + (0x1a - 0xc8) * s)
-      }
-
-      const color = (r << 16) | (g << 8) | b
-      // Alpha: strong at core, smooth power-law decay
-      const alpha = 0.005 + 0.22 * Math.pow(Math.max(0, 1 - t), 2.2)
-      gfx.lineStyle(LW, color, alpha)
-      gfx.strokeCircle(0, 0, t * MAX_R)
-    }
-  }
 
   _drawStarfield() {
     const gfx    = this.add.graphics().setDepth(0)

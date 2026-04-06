@@ -100,6 +100,12 @@ export default function App() {
       />
 
       <div className="flex-1 relative">
+        {/* Top-left branding */}
+        <div className="absolute top-4 left-4 z-20 flex items-center gap-2 pointer-events-none select-none">
+          <div className="w-7 h-7 rounded-full bg-yellow-400 shadow-[0_0_12px_4px_rgba(250,204,21,0.5)]" />
+          <span className="text-white font-bold text-base tracking-[0.2em] drop-shadow-lg">STARTUPSPACE</span>
+        </div>
+
         <PhaserGame
           ref={phaserRef}
           onPlanetSelect={handlePlanetSelect}

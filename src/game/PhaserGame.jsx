@@ -26,7 +26,7 @@ const PhaserGame = forwardRef(function PhaserGame(
     const config = {
       type: Phaser.AUTO,
       parent: containerRef.current,
-      backgroundColor: '#05050f',
+      transparent: true,
       scene: [BootScene, SpaceScene],
       scale: {
         mode: Phaser.Scale.RESIZE,
@@ -66,7 +66,15 @@ const PhaserGame = forwardRef(function PhaserGame(
     spaceSceneRef.current._onOrbitClick     = onOrbitClick
   }, [onPlanetSelect, onOrbitClick])
 
-  return <div ref={containerRef} style={{ position: 'absolute', inset: 0 }} />
+  return (
+    <div
+      ref={containerRef}
+      style={{
+        position: 'absolute', inset: 0,
+        background: 'radial-gradient(ellipse at 50% 50%, #c0e8ff 0%, #1878d0 18%, #0a1a60 42%, #060a20 70%, #030510 100%)',
+      }}
+    />
+  )
 })
 
 export default PhaserGame
