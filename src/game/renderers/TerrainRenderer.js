@@ -1,29 +1,28 @@
 /**
- * TerrainRenderer — draws terrain + background city buildings into
- * three batched Graphics objects (terrain, water shimmer, city buildings).
- * All city buildings are redrawn on swap (full clear+redraw, ~2ms for 40×40).
+ * TerrainRenderer — places sprite-based terrain tiles and background city
+ * buildings using painter's-algorithm depth sorting.
+ *
+ * Depth scheme per tile (col, row):
+ *   tile base  = (col + row) * 3
+ *   prop       = (col + row) * 3 + 1
+ *   city bldg  = (col + row) * 3 + 2
  */
 import {
   TILE_W, TILE_H, MAP_COLS, MAP_ROWS,
   T_GRASS, T_ROAD, T_WATER, T_PARK,
-  CITY_BUILDING_COLORS, CB_COTTAGE, CB_HOUSE,
+  CB_COTTAGE, CB_HOUSE, CB_SHOP, CB_OFFICE, CB_APART,
   isoToScreen,
 } from '../config'
 
-const HW = TILE_W / 2
-const HH = TILE_H / 2
+const HH = TILE_H / 2  // 32
 
-const TERRAIN_TOP = {
-  [T_GRASS]: 0x4ade80,
-  [T_ROAD]:  0x6b7280,
-  [T_WATER]: 0x38bdf8,
-  [T_PARK]:  0x34d399,
-}
-const TERRAIN_GRID = {
-  [T_GRASS]: 0x16a34a,
-  [T_ROAD]:  0x4b5563,
-  [T_WATER]: 0x0ea5e9,
-  [T_PARK]:  0x059669,
+// Prefix for city building sprite key lookup
+const CB_PREFIX = {
+  [CB_COTTAGE]: 'city_cottage',
+  [CB_HOUSE]:   'city_house',
+  [CB_SHOP]:    'city_shop',
+  [CB_OFFICE]:  'city_office',
+  [CB_APART]:   'city_apart',
 }
 
 export default class TerrainRenderer {
@@ -31,187 +30,50 @@ export default class TerrainRenderer {
     this._scene = scene
     this._tiles = tiles
 
-    this._terrainGfx = scene.add.graphics().setDepth(0)
-    this._waterGfx   = scene.add.graphics().setDepth(1)
-    this._cityGfx    = scene.add.graphics().setDepth(2)
+    // All tile + prop sprites (never change after creation)
+    this._tileSprites    = []   // flat list
+    this._propSprites    = []   // flat list
+
+    // City building sprites — may be swapped
+    this._citySprites    = new Map()  // `${col},${row}` → Phaser.Image
 
     this._waterTick  = 0
     this._waterPhase = 0
   }
 
+  // ── Public API ─────────────────────────────────────────────────────────────
+
   fullRedraw() {
-    this._drawTerrain()
-    this._drawCityBuildings()
-    this._updateWater(0, true)
+    this._createTileSprites()
+    this._createCitySprites()
   }
 
-  // ── Terrain ───────────────────────────────────────────────────────────────
-  _drawTerrain() {
-    const gfx = this._terrainGfx
-    gfx.clear()
-
-    for (let row = 0; row < MAP_ROWS; row++) {
-      for (let col = 0; col < MAP_COLS; col++) {
-        const type = this._tiles[row][col].type
-        const { x, y } = isoToScreen(col, row)
-        const top  = TERRAIN_TOP[type]  ?? TERRAIN_TOP[T_GRASS]
-        const grid = TERRAIN_GRID[type] ?? TERRAIN_GRID[T_GRASS]
-
-        // Top-face diamond
-        gfx.fillStyle(top)
-        gfx.fillPoints([
-          { x,       y },
-          { x: x+HW, y: y+HH },
-          { x,       y: y+TILE_H },
-          { x: x-HW, y: y+HH },
-        ], true)
-
-        // Grid lines
-        gfx.lineStyle(0.5, grid, 0.35)
-        gfx.strokePoints([
-          { x, y }, { x: x+HW, y: y+HH },
-          { x, y: y+TILE_H }, { x: x-HW, y: y+HH },
-          { x, y },
-        ], false)
-
-        // Road dashes
-        if (type === T_ROAD) {
-          gfx.lineStyle(1, 0xfde68a, 0.3)
-          gfx.lineBetween(x - 5, y + HH, x + 5, y + HH)
-        }
-
-        // Park: two tiny tree dots
-        if (type === T_PARK) {
-          gfx.fillStyle(0x15803d, 0.8)
-          gfx.fillCircle(x - 9, y + HH - 3, 3)
-          gfx.fillCircle(x + 7, y + HH - 2, 2)
-        }
-      }
-    }
-  }
-
-  // ── City buildings ────────────────────────────────────────────────────────
-  _drawCityBuildings() {
-    const gfx = this._cityGfx
-    gfx.clear()
-
-    // Collect & sort in painter's order (back → front)
-    const list = []
-    for (let row = 0; row < MAP_ROWS; row++) {
-      for (let col = 0; col < MAP_COLS; col++) {
-        if (this._tiles[row][col].city) list.push({ row, col })
-      }
-    }
-    list.sort((a, b) => (a.row + a.col) - (b.row + b.col))
-
-    for (const { row, col } of list) {
-      this._drawOneBuilding(gfx, col, row)
-    }
-  }
-
-  _drawOneBuilding(gfx, col, row) {
-    const city = this._tiles[row][col].city
-    if (!city) return
-
-    const colors = CITY_BUILDING_COLORS[city.type]
-    if (!colors) return
-
-    const { x: bx, y: by } = isoToScreen(col, row)
-    const h = city.height
-
-    // Left face
-    gfx.fillStyle(colors.left)
-    gfx.fillPoints([
-      { x: bx-HW, y: by   },
-      { x: bx,    y: by+HH },
-      { x: bx,    y: by+HH-h },
-      { x: bx-HW, y: by-h },
-    ], true)
-
-    // Right face
-    gfx.fillStyle(colors.right)
-    gfx.fillPoints([
-      { x: bx+HW, y: by   },
-      { x: bx,    y: by+HH },
-      { x: bx,    y: by+HH-h },
-      { x: bx+HW, y: by-h },
-    ], true)
-
-    // Top face
-    gfx.fillStyle(colors.top)
-    gfx.fillPoints([
-      { x: bx,    y: by-h+HH },
-      { x: bx+HW, y: by-h    },
-      { x: bx,    y: by-h-HH },
-      { x: bx-HW, y: by-h    },
-    ], true)
-
-    // Outline (thin)
-    gfx.lineStyle(0.5, 0x000000, 0.15)
-    gfx.strokePoints([
-      { x: bx-HW, y: by }, { x: bx, y: by+HH }, { x: bx+HW, y: by },
-      { x: bx, y: by-HH }, { x: bx-HW, y: by },
-    ], false)
-
-    // Windows (dark rectangles on faces)
-    if (h > 14) {
-      const nFloors = Math.max(1, Math.floor(h / 9))
-      gfx.fillStyle(0x0f1e2a, 0.55)
-      for (let f = 0; f < nFloors; f++) {
-        const v = (f + 0.65) / (nFloors + 0.4)
-        for (const u of [0.28, 0.68]) {
-          // Left face window
-          const lx = bx - HW + u * HW,  ly = by + u * HH - v * h
-          gfx.fillRect(lx - 2, ly - 2, 4, 3)
-          // Right face window
-          const rx = bx + HW - u * HW, ry = by + u * HH - v * h
-          gfx.fillRect(rx - 2, ry - 2, 4, 3)
-        }
-      }
-    }
-
-    // Peaked roof for cottages & houses
-    if (city.type === CB_COTTAGE || city.type === CB_HOUSE) {
-      gfx.fillStyle(city.type === CB_COTTAGE ? 0xb91c1c : 0x92400e, 0.85)
-      gfx.fillTriangle(
-        bx - HW * 0.55, by - h,
-        bx + HW * 0.55, by - h,
-        bx, by - h - HH * 0.9
-      )
-    }
-  }
-
-  // ── Water shimmer (animated) ──────────────────────────────────────────────
-  _updateWater(time, force = false) {
-    if (!force && time - this._waterTick < 700) return
-    this._waterTick = time
-    this._waterPhase = (this._waterPhase + 1) % 4
-
-    const gfx = this._waterGfx
-    gfx.clear()
-    const off = this._waterPhase
-
-    for (let row = 0; row < MAP_ROWS; row++) {
-      for (let col = 0; col < MAP_COLS; col++) {
-        if (this._tiles[row][col].type !== T_WATER) continue
-        const { x, y } = isoToScreen(col, row)
-        const cy = y + HH
-
-        gfx.lineStyle(1, 0x7dd3fc, 0.45)
-        gfx.lineBetween(x - 10 + off, cy - 1, x + 10 - off, cy - 1)
-        gfx.lineStyle(1, 0xbae6fd, 0.3)
-        gfx.lineBetween(x - 7,      cy + 4 - off * 0.5,
-                        x + 7,      cy + 4 - off * 0.5)
-      }
-    }
-  }
-
-  // Swap city building data at two positions, then redraw
+  /** Swap the city building sprites at two grid positions then re-key. */
   swapCityBuildings(col1, row1, col2, row2) {
-    const tmp = this._tiles[row1][col1].city
-    this._tiles[row1][col1].city = this._tiles[row2][col2].city
-    this._tiles[row2][col2].city = tmp
-    this._drawCityBuildings()
+    // Swap tile data (already done by caller in _tiles)
+    const key1 = `${col1},${row1}`
+    const key2 = `${col2},${row2}`
+
+    const sp1 = this._citySprites.get(key1)
+    const sp2 = this._citySprites.get(key2)
+
+    const city1 = this._tiles[row1][col1].city
+    const city2 = this._tiles[row2][col2].city
+
+    // Destroy old, recreate at new positions
+    sp1?.destroy()
+    sp2?.destroy()
+    this._citySprites.delete(key1)
+    this._citySprites.delete(key2)
+
+    if (city1) {
+      const sp = this._placeCityBuilding(col1, row1)
+      if (sp) this._citySprites.set(key1, sp)
+    }
+    if (city2) {
+      const sp = this._placeCityBuilding(col2, row2)
+      if (sp) this._citySprites.set(key2, sp)
+    }
   }
 
   getTile(col, row) {
@@ -220,6 +82,131 @@ export default class TerrainRenderer {
   }
 
   update(time) {
-    this._updateWater(time)
+    this._animateWater(time)
+  }
+
+  // ── Terrain tiles ──────────────────────────────────────────────────────────
+
+  _createTileSprites() {
+    for (let row = 0; row < MAP_ROWS; row++) {
+      for (let col = 0; col < MAP_COLS; col++) {
+        const tile   = this._tiles[row][col]
+        const { x, y } = isoToScreen(col, row)
+        const depth  = (col + row) * 3
+
+        const key = this._tileKey(tile.type, col, row)
+        const sp  = this._scene.add.image(x, y, key)
+        sp.setOrigin(0.5, 0)
+        sp.setDepth(depth)
+        this._tileSprites.push(sp)
+
+        // Water — tag for wave animation
+        if (tile.type === T_WATER) sp._isWater = true
+
+        // Park — add a tree prop
+        if (tile.type === T_PARK) {
+          this._addTreeProp(col, row, x, y, depth + 1)
+        }
+      }
+    }
+  }
+
+  /** Choose the right road tile key based on neighbour connectivity. */
+  _tileKey(type, col, row) {
+    if (type === T_GRASS) return 'tile_grass'
+    if (type === T_WATER) return 'tile_water'
+    if (type === T_PARK)  return 'tile_grass'
+    // T_ROAD — pick variant by neighbour connections
+    return this._roadKey(col, row)
+  }
+
+  _isRoad(c, r) {
+    return this._tiles[r]?.[c]?.type === T_ROAD
+  }
+
+  /**
+   * Directions in iso grid (what the tile suffix letters mean):
+   *   NE = col+1 / SW = col-1  →  road runs NE–SW (straight_sw tile)
+   *   SE = row+1 / NW = row-1  →  road runs NW–SE (straight_se tile)
+   */
+  _roadKey(col, row) {
+    const ne = this._isRoad(col + 1, row)
+    const sw = this._isRoad(col - 1, row)
+    const se = this._isRoad(col, row + 1)
+    const nw = this._isRoad(col, row - 1)
+
+    if (ne && sw && se && nw) return 'tile_road_xing'
+
+    if (ne && sw && se)       return 'tile_road_intersect_nw'
+    if (ne && sw && nw)       return 'tile_road_intersect_se'
+    if (ne && se && nw)       return 'tile_road_intersect_sw'
+    if (sw && se && nw)       return 'tile_road_intersect_ne'
+
+    if (ne && sw)             return 'tile_road_straight_sw'
+    if (se && nw)             return 'tile_road_straight_se'
+
+    if (ne && nw)             return 'tile_road_corner_n'
+    if (ne && se)             return 'tile_road_corner_e'
+    if (se && sw)             return 'tile_road_corner_s'
+    if (sw && nw)             return 'tile_road_corner_w'
+
+    if (ne || sw)             return 'tile_road_straight_sw'
+    if (se || nw)             return 'tile_road_straight_se'
+    return 'tile_road_xing'
+  }
+
+  _addTreeProp(col, row, x, y, depth) {
+    // Deterministic tree variant and offset from tile coords
+    const variant = (col * 7 + row * 13) % 3
+    const key  = ['prop_tree_a', 'prop_tree_b', 'prop_tree_c'][variant]
+    const offX = ((col * 17 + row * 11) % 20) - 10
+    const offY = ((col * 11 + row * 17) % 12) - 6
+
+    const sp = this._scene.add.image(x + offX, y + HH + offY, key)
+    sp.setOrigin(0.5, 1.0)
+    sp.setDepth(depth)
+    this._propSprites.push(sp)
+  }
+
+  // ── City buildings ─────────────────────────────────────────────────────────
+
+  _createCitySprites() {
+    for (let row = 0; row < MAP_ROWS; row++) {
+      for (let col = 0; col < MAP_COLS; col++) {
+        if (!this._tiles[row][col].city) continue
+        const sp = this._placeCityBuilding(col, row)
+        if (sp) this._citySprites.set(`${col},${row}`, sp)
+      }
+    }
+  }
+
+  _placeCityBuilding(col, row) {
+    const city = this._tiles[row][col].city
+    if (!city) return null
+
+    const prefix = CB_PREFIX[city.type]
+    if (!prefix) return null
+
+    const key    = `${prefix}_${city.variant ?? 0}`
+    const { x, y } = isoToScreen(col, row)
+    const depth  = (col + row) * 3 + 2
+
+    const sp = this._scene.add.image(x, y + TILE_H, key)
+    sp.setOrigin(0.5, 1.0)
+    sp.setDepth(depth)
+    return sp
+  }
+
+  // ── Water wave animation ───────────────────────────────────────────────────
+  _animateWater(time) {
+    if (time - this._waterTick < 600) return
+    this._waterTick  = time
+    this._waterPhase = (this._waterPhase + 1) % 4
+
+    // Subtle alpha pulse on water tiles
+    const alpha = 0.85 + this._waterPhase * 0.05
+    for (const sp of this._tileSprites) {
+      if (sp._isWater) sp.setAlpha(alpha)
+    }
   }
 }

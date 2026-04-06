@@ -2,14 +2,15 @@ import Phaser from 'phaser'
 import {
   TILE_W, TILE_H, MAP_COLS, MAP_ROWS,
   T_WATER, T_ROAD,
-  STARTUP_HEIGHTS, isoToScreen, screenToIso,
+  STARTUP_SPRITE_KEY,
+  isoToScreen, screenToIso,
 } from '../config'
 import { generateCity } from '../generators/CityGen'
 import TerrainRenderer from '../renderers/TerrainRenderer'
-import Building, { drawStartupShape } from '../objects/Building'
+import Building from '../objects/Building'
 
-const HW = TILE_W / 2
-const HH = TILE_H / 2
+const HW = TILE_W / 2  // 64
+const HH = TILE_H / 2  // 32
 
 // Drag state machine states
 const DS = { IDLE: 0, PRESS_WAIT: 1, DRAGGING: 2 }
@@ -38,16 +39,12 @@ export default class MapScene extends Phaser.Scene {
   // Scene lifecycle
   // ─────────────────────────────────────────────────────────────────────────
   create() {
-    // Generate the city map (deterministic seed)
     this._tiles = generateCity(MAP_COLS, MAP_ROWS)
 
-    // Terrain + background city buildings
     this._terrainRenderer = new TerrainRenderer(this, this._tiles)
     this._terrainRenderer.fullRedraw()
 
-    // Empty-tile click zones (for new startup placement)
     this._buildEmptyZones()
-
     this._setupCamera()
     this._setupInput()
     this._spawnClouds()
@@ -64,12 +61,11 @@ export default class MapScene extends Phaser.Scene {
   // Public API — called from PhaserGame.jsx / React
   // ─────────────────────────────────────────────────────────────────────────
   syncStartups(startups, onSelect, onEmptyTile) {
-    this._onSelectCallback  = onSelect
+    this._onSelectCallback   = onSelect
     this._onEmptyTileCallback = onEmptyTile
 
     const incoming = new Set(startups.map((s) => s.id))
 
-    // Remove buildings that no longer exist
     for (const [id, building] of this._buildings) {
       if (!incoming.has(id)) {
         building.destroy()
@@ -77,7 +73,6 @@ export default class MapScene extends Phaser.Scene {
       }
     }
 
-    // Add or update
     for (const startup of startups) {
       const col = startup.pos_x ?? 0
       const row = startup.pos_y ?? 0
@@ -134,19 +129,17 @@ export default class MapScene extends Phaser.Scene {
     const cy = (MAP_COLS / 2 + MAP_ROWS / 2) * HH
     this.cameras.main.setBackgroundColor('#1a1a2e')
     this.cameras.main.centerOn(cx, cy + 80)
-    this.cameras.main.setZoom(0.9)
+    this.cameras.main.setZoom(0.45)
   }
 
   // ─────────────────────────────────────────────────────────────────────────
   // Input — camera pan + drag state machine
   // ─────────────────────────────────────────────────────────────────────────
   _setupInput() {
-    // Building drag events (emitted from Building.js hit zones)
     this.events.on('building:pointerdown', this._onBuildingDown, this)
 
     this.input.on('pointerdown', (ptr) => {
       if (this._drag.state !== DS.IDLE) return
-      // Start potential camera pan
       this._panStart = {
         px: ptr.x, py: ptr.y,
         sx: this.cameras.main.scrollX,
@@ -165,12 +158,11 @@ export default class MapScene extends Phaser.Scene {
 
     this.input.on('wheel', (_ptr, _objs, _dx, dy) => {
       const z = this.cameras.main.zoom
-      this.cameras.main.setZoom(Phaser.Math.Clamp(z - dy * 0.001, 0.35, 2.5))
+      this.cameras.main.setZoom(Phaser.Math.Clamp(z - dy * 0.001, 0.2, 2.0))
     })
   }
 
   _onBuildingDown(building, ptr) {
-    // Stop camera pan from starting for this press
     this._panStart = null
     this._camEnabled = false
 
@@ -192,7 +184,7 @@ export default class MapScene extends Phaser.Scene {
     if (this._drag.state === DS.PRESS_WAIT) {
       const dx = ptr.worldX - this._drag.startX
       const dy = ptr.worldY - this._drag.startY
-      if (dx * dx + dy * dy > 64) { // 8px threshold
+      if (dx * dx + dy * dy > 64) {
         this._startDrag()
       }
       return
@@ -203,7 +195,6 @@ export default class MapScene extends Phaser.Scene {
       return
     }
 
-    // Camera pan
     if (this._panStart && this._camEnabled) {
       const dx = ptr.x - this._panStart.px
       const dy = ptr.y - this._panStart.py
@@ -217,7 +208,6 @@ export default class MapScene extends Phaser.Scene {
 
   _onPointerUp(ptr) {
     if (this._drag.state === DS.PRESS_WAIT) {
-      // Tap → select
       this._restoreBuilding()
       if (this._onSelectCallback) this._onSelectCallback(this._drag.building.startup)
       this._resetDrag()
@@ -239,13 +229,15 @@ export default class MapScene extends Phaser.Scene {
   _startDrag() {
     const { building, originCol, originRow } = this._drag
 
-    // Ghost: draw at half-alpha
-    const ghost = this.add.graphics()
+    // Ghost sprite — semi-transparent copy of the building
+    const nivel = building.startup?.nivel ?? 0
+    const key   = STARTUP_SPRITE_KEY[nivel] ?? STARTUP_SPRITE_KEY[0]
+    const { x, y } = isoToScreen(originCol, originRow)
+
+    const ghost = this.add.image(x, y + TILE_H, key)
+    ghost.setOrigin(0.5, 1.0)
     ghost.setAlpha(0.55)
     ghost.setDepth(9999)
-    drawStartupShape(ghost, building.startup?.nivel ?? 0)
-    const { x, y } = isoToScreen(originCol, originRow)
-    ghost.setPosition(x, y)
 
     // Highlight tile outline
     const highlight = this.add.graphics()
@@ -255,21 +247,15 @@ export default class MapScene extends Phaser.Scene {
     building.setAlpha(0.15)
     this.input.setDefaultCursor('grabbing')
 
-    Object.assign(this._drag, {
-      state: DS.DRAGGING,
-      ghost,
-      highlight,
-    })
+    Object.assign(this._drag, { state: DS.DRAGGING, ghost, highlight })
   }
 
   _updateDrag(ptr) {
     const { ghost, highlight } = this._drag
 
-    // Ghost follows cursor exactly
     ghost.setPosition(ptr.worldX, ptr.worldY)
 
-    // Highlight snaps to grid
-    const { col, row } = screenToIso(ptr.worldX, ptr.worldY)
+    const { col, row } = screenToIso(ptr.worldX, ptr.worldY - HH)
     if (col !== this._drag.targetCol || row !== this._drag.targetRow) {
       this._drag.targetCol = col
       this._drag.targetRow = row
@@ -278,7 +264,7 @@ export default class MapScene extends Phaser.Scene {
 
       const valid = this._isValidDrop(col, row)
       const other = valid ? this._getBuildingAt(col, row) : null
-      const mode = !valid ? 'invalid' : other ? 'swap' : 'move'
+      const mode  = !valid ? 'invalid' : other ? 'swap' : 'move'
       this._drawHighlight(highlight, col, row, mode)
     }
   }
@@ -286,7 +272,7 @@ export default class MapScene extends Phaser.Scene {
   _endDrag() {
     const { building, originCol, originRow, targetCol, targetRow } = this._drag
 
-    const valid = this._isValidDrop(targetCol, targetRow)
+    const valid   = this._isValidDrop(targetCol, targetRow)
     const samePos = targetCol === originCol && targetRow === originRow
 
     if (!valid || samePos) {
@@ -299,15 +285,11 @@ export default class MapScene extends Phaser.Scene {
     const otherBuilding = this._getBuildingAt(targetCol, targetRow)
 
     if (otherBuilding) {
-      // Swap two startups
       this._emitPositionUpdate(building.startup.id, targetCol, targetRow)
       this._emitPositionUpdate(otherBuilding.startup.id, originCol, originRow)
     } else {
-      // City building swap if needed
       const tile = this._tiles[targetRow]?.[targetCol]
-      const originTile = this._tiles[originRow]?.[originCol]
       if (tile?.city) {
-        // Move city building to startup's old position
         this._terrainRenderer.swapCityBuildings(originCol, originRow, targetCol, targetRow)
       }
       this._emitPositionUpdate(building.startup.id, targetCol, targetRow)
@@ -325,12 +307,11 @@ export default class MapScene extends Phaser.Scene {
   _drawHighlight(gfx, col, row, mode) {
     gfx.clear()
     const color = mode === 'invalid' ? 0xf87171 : mode === 'swap' ? 0xfbbf24 : 0x4ade80
-    gfx.lineStyle(2.5, color, 0.9)
+    gfx.lineStyle(3, color, 0.9)
     gfx.strokePoints([
       { x: -HW, y: 0 }, { x: 0, y: HH }, { x: HW, y: 0 }, { x: 0, y: -HH }, { x: -HW, y: 0 }
     ], false)
-    // Fill glow
-    gfx.fillStyle(color, 0.15)
+    gfx.fillStyle(color, 0.18)
     gfx.fillPoints([
       { x: -HW, y: 0 }, { x: 0, y: HH }, { x: HW, y: 0 }, { x: 0, y: -HH }
     ], true)
@@ -375,14 +356,14 @@ export default class MapScene extends Phaser.Scene {
 
   _addCloud(randomX = false) {
     const scale = 0.5 + Math.random() * 1.0
-    const alpha = 0.25 + Math.random() * 0.35
+    const alpha = 0.18 + Math.random() * 0.22
     const speed = 15 + Math.random() * 25
 
     const gfx = this.add.graphics()
     gfx.fillStyle(0xffffff, alpha)
     gfx.fillEllipse(0, 0, 80 * scale, 28 * scale)
-    gfx.fillEllipse(-22 * scale, 4 * scale, 50 * scale, 22 * scale)
-    gfx.fillEllipse( 22 * scale, 4 * scale, 50 * scale, 22 * scale)
+    gfx.fillEllipse(-22 * scale,  4 * scale, 50 * scale, 22 * scale)
+    gfx.fillEllipse( 22 * scale,  4 * scale, 50 * scale, 22 * scale)
     gfx.setDepth(10000)
 
     const mapW = MAP_COLS * HW
@@ -391,7 +372,7 @@ export default class MapScene extends Phaser.Scene {
     this._clouds.push({ gfx, speed })
   }
 
-  _updateClouds(time) {
+  _updateClouds() {
     const mapW = MAP_COLS * HW
     for (let i = this._clouds.length - 1; i >= 0; i--) {
       const c = this._clouds[i]

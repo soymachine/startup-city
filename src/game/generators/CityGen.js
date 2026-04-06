@@ -5,7 +5,7 @@
 import {
   T_GRASS, T_ROAD, T_WATER, T_PARK,
   CB_COTTAGE, CB_HOUSE, CB_SHOP, CB_OFFICE, CB_APART,
-  CITY_BUILDING_HEIGHTS,
+  CB_VARIANTS,
 } from '../config'
 
 // Deterministic PRNG (mulberry32)
@@ -94,20 +94,20 @@ export function generateCity(cols, rows, seed = 42) {
 
 function pickBuilding(distFromCenter, cols, rng) {
   const r = rng()
-  const heightVariance = 0.7 + rng() * 0.6
-  const variant = Math.floor(rng() * 3)
+  // consume a rng call for determinism parity (was heightVariance)
+  rng()
 
   if (distFromCenter < cols * 0.18) {
-    // Downtown: offices & apartments
-    const type = r < 0.35 ? CB_APART : r < 0.65 ? CB_OFFICE : CB_SHOP
-    return { type, height: Math.floor(CITY_BUILDING_HEIGHTS[type] * heightVariance), variant }
+    const type    = r < 0.35 ? CB_APART : r < 0.65 ? CB_OFFICE : CB_SHOP
+    const variant = Math.floor(rng() * CB_VARIANTS[type])
+    return { type, variant }
   }
   if (distFromCenter < cols * 0.36) {
-    // Midtown: mixed
-    const type = r < 0.3 ? CB_APART : r < 0.55 ? CB_HOUSE : r < 0.75 ? CB_SHOP : CB_OFFICE
-    return { type, height: Math.floor(CITY_BUILDING_HEIGHTS[type] * heightVariance), variant }
+    const type    = r < 0.3 ? CB_APART : r < 0.55 ? CB_HOUSE : r < 0.75 ? CB_SHOP : CB_OFFICE
+    const variant = Math.floor(rng() * CB_VARIANTS[type])
+    return { type, variant }
   }
-  // Suburbs: residential
-  const type = r < 0.55 ? CB_COTTAGE : r < 0.82 ? CB_HOUSE : CB_SHOP
-  return { type, height: Math.floor(CITY_BUILDING_HEIGHTS[type] * heightVariance), variant }
+  const type    = r < 0.55 ? CB_COTTAGE : r < 0.82 ? CB_HOUSE : CB_SHOP
+  const variant = Math.floor(rng() * CB_VARIANTS[type])
+  return { type, variant }
 }
