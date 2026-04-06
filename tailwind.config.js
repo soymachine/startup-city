@@ -7,6 +7,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
+        sans:  ['"Titillium Web"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         pixel: ['"Press Start 2P"', 'monospace'],
       },
       colors: {

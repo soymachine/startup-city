@@ -46,7 +46,7 @@ export default function StartupPanel({ startup, onClose }) {
       <div className="flex items-start justify-between p-4 border-b border-space-accent">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
-            <span className="text-2xl">{nivelInfo.emoji}</span>
+            <span className="text-lg font-bold tracking-widest" style={{ color: nivelInfo.color }}>{nivelInfo.emoji}</span>
             {editing ? (
               <input
                 value={form.nombre}
@@ -104,7 +104,7 @@ export default function StartupPanel({ startup, onClose }) {
             ↓ Bajar
           </button>
           <div className="flex-shrink-0 text-center">
-            <div className="text-2xl">{nivelInfo.emoji}</div>
+            <div className="text-xl font-bold tracking-widest" style={{ color: nivelInfo.color }}>{nivelInfo.emoji}</div>
             <div className="text-xs text-gray-400">{nivel}/6</div>
           </div>
           <button

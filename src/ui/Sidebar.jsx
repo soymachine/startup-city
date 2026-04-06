@@ -62,7 +62,7 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
         </div>
         <div className="bg-space-panel p-3 text-center">
           <div className="text-xl font-bold text-space-gold">
-            {NIVEL_INFO[stats.maxNivel]?.emoji ?? '💡'}
+            {NIVEL_INFO[stats.maxNivel]?.emoji ?? 'I'}
           </div>
           <div className="text-xs text-gray-400">Max nivel</div>
         </div>
@@ -133,7 +133,7 @@ function StartupRow({ startup, onSelect, onCenter }) {
   return (
     <div className="group flex items-center gap-3 px-3 py-2.5 hover:bg-space-accent/50 cursor-pointer border-b border-space-accent/30 transition-colors">
       <button className="flex-1 flex items-center gap-3 min-w-0 text-left" onClick={onSelect}>
-        <span className="text-xl flex-shrink-0">{nivelInfo.emoji}</span>
+        <span className="text-sm font-bold tracking-widest flex-shrink-0 w-7 text-center" style={{ color: nivelInfo.color }}>{nivelInfo.emoji}</span>
         <div className="min-w-0">
           <p className="text-white text-sm font-medium truncate">{startup.nombre}</p>
           <div className="flex items-center gap-1.5 mt-0.5">

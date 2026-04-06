@@ -14,13 +14,13 @@ import { db } from './config'
 const COLLECTION = 'startups'
 
 export const NIVEL_INFO = {
-  0: { label: 'Idea embrionaria', emoji: '💡', color: '#9ca3af' },
-  1: { label: 'Definiendo', emoji: '📝', color: '#60a5fa' },
-  2: { label: 'Prototipo', emoji: '🔧', color: '#f59e0b' },
-  3: { label: 'Beta privada', emoji: '🔒', color: '#a78bfa' },
-  4: { label: 'Beta pública', emoji: '🌍', color: '#34d399' },
-  5: { label: 'Tracción', emoji: '📈', color: '#f97316' },
-  6: { label: 'Scale-up', emoji: '🚀', color: '#e94560' },
+  0: { label: 'Idea embrionaria', emoji: 'I',   color: '#9ca3af' },
+  1: { label: 'Definiendo',       emoji: 'II',  color: '#60a5fa' },
+  2: { label: 'Prototipo',        emoji: 'III', color: '#f59e0b' },
+  3: { label: 'Beta privada',     emoji: 'IV',  color: '#a78bfa' },
+  4: { label: 'Beta pública',     emoji: 'V',   color: '#34d399' },
+  5: { label: 'Tracción',         emoji: 'VI',  color: '#f97316' },
+  6: { label: 'Scale-up',         emoji: 'VII', color: '#e94560' },
 }
 
 export const ESTADO_INFO = {

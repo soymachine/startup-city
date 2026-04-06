@@ -32,7 +32,7 @@ export default class SpaceScene extends Phaser.Scene {
   // ── Lifecycle ───────────────────────────────────────────────────────────────
 
   create() {
-    this.cameras.main.setBackgroundColor('#000000')
+    this.cameras.main.setBackgroundColor('#060a18')
     this.cameras.main.centerOn(0, 0)
     this.cameras.main.setZoom(0.85)
 
@@ -44,7 +44,7 @@ export default class SpaceScene extends Phaser.Scene {
     this._dragGfx  = this.add.graphics().setDepth(9999)
     this._labelGfx = this.add.graphics().setDepth(500)
 
-    const FONT = 'ui-monospace, "Courier New", monospace'
+    const FONT = '"Titillium Web", ui-sans-serif, sans-serif'
     this._labelName = this.add.text(0, 0, '', {
       fontSize: '19px', fontFamily: FONT,
       color: '#ffffff', stroke: '#000000', strokeThickness: 4,
@@ -156,43 +156,61 @@ export default class SpaceScene extends Phaser.Scene {
   // ── Background ──────────────────────────────────────────────────────────────
 
   _drawNebula() {
-    // Radial colour gradient: warm amber at the core → cool indigo at the edge.
-    // Drawn as concentric stroked circles so each annulus has its own colour.
+    // Radial gradient matching reference: bright cyan-white core → vivid blue → deep indigo.
+    // Each step is a stroked circle wide enough to tile with its neighbours.
     const gfx   = this.add.graphics().setDepth(-1)
-    const STEPS = 40
-    const MAX_R = 3000
-    const LW    = MAX_R / STEPS + 2   // each ring is just wide enough to tile
+    const STEPS = 50
+    const MAX_R = 2800
+    const LW    = MAX_R / STEPS + 2
 
-    // Inner colour: amber 0xff7700 · Outer colour: deep indigo 0x1208c8
-    const iR = 0xff, iG = 0x77, iB = 0x00
-    const oR = 0x12, oG = 0x08, oB = 0xc8
-
+    // Core: near-white cyan 0xc8eeff → mid: vivid blue 0x1464c8 → outer: dark indigo 0x06091a
+    // We split into two segments for a natural S-curve feel.
     for (let i = 0; i <= STEPS; i++) {
-      const t     = i / STEPS
-      const r     = Math.round(iR + (oR - iR) * t)
-      const g     = Math.round(iG + (oG - iG) * t)
-      const b     = Math.round(iB + (oB - iB) * t)
+      const t = i / STEPS   // 0 = centre, 1 = outer edge
+
+      let r, g, b
+      if (t < 0.4) {
+        // Core → mid-blue  (bright cyan-white to vivid blue)
+        const s = t / 0.4
+        r = Math.round(0xc8 + (0x14 - 0xc8) * s)
+        g = Math.round(0xee + (0x64 - 0xee) * s)
+        b = Math.round(0xff + (0xc8 - 0xff) * s)
+      } else {
+        // Mid-blue → dark indigo
+        const s = (t - 0.4) / 0.6
+        r = Math.round(0x14 + (0x06 - 0x14) * s)
+        g = Math.round(0x64 + (0x09 - 0x64) * s)
+        b = Math.round(0xc8 + (0x1a - 0xc8) * s)
+      }
+
       const color = (r << 16) | (g << 8) | b
-      // Alpha peaks at centre, decays smoothly toward the edge
-      const alpha = 0.01 + 0.07 * Math.pow(1 - t, 1.6)
+      // Alpha: strong at core, smooth power-law decay
+      const alpha = 0.005 + 0.22 * Math.pow(Math.max(0, 1 - t), 2.2)
       gfx.lineStyle(LW, color, alpha)
       gfx.strokeCircle(0, 0, t * MAX_R)
     }
   }
 
   _drawStarfield() {
-    const gfx   = this.add.graphics().setDepth(0)
-    const rng   = mulberry32(42)
-    const SPREAD = 5000
+    const gfx    = this.add.graphics().setDepth(0)
+    const rng    = mulberry32(42)
+    const SPREAD = 2800   // tighter spread — stars fill the playfield, not endless void
 
-    for (let i = 0; i < 550; i++) {
+    for (let i = 0; i < 480; i++) {
       const x    = (rng() - 0.5) * SPREAD * 2
       const y    = (rng() - 0.5) * SPREAD * 2
-      const big  = rng() < 0.08
-      const size = big ? 1.4 : 0.7
-      const alph = big ? (0.4 + rng() * 0.5) : (0.12 + rng() * 0.28)
-      gfx.fillStyle(0xffffff, alph)
-      gfx.fillRect(x, y, size, size)
+      const kind = rng()
+      // Three sizes: tiny pinpoint, medium, occasional bright
+      let size, alpha
+      if (kind < 0.65) {
+        size = 1; alpha = 0.35 + rng() * 0.35
+      } else if (kind < 0.92) {
+        size = 2; alpha = 0.55 + rng() * 0.35
+      } else {
+        size = 3; alpha = 0.75 + rng() * 0.20
+      }
+      gfx.fillStyle(0xffffff, alpha)
+      gfx.fillRect(x - size * 0.5, y - size * 0.5, size, size)
     }
   }
 
