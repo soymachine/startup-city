@@ -10,14 +10,18 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
   const [filtroEstado, setFiltroEstado] = useState('todos')
   const [busqueda, setBusqueda]         = useState('')
   const [collapsed, setCollapsed]       = useState(false)
+  const [sortDir, setSortDir]           = useState(null) // null | 'asc' | 'desc'
 
   const filtered = useMemo(() => {
-    return startups.filter((s) => {
+    const list = startups.filter((s) => {
       const matchEstado   = filtroEstado === 'todos' || s.estado === filtroEstado
       const matchBusqueda = !busqueda || s.nombre.toLowerCase().includes(busqueda.toLowerCase())
       return matchEstado && matchBusqueda
     })
-  }, [startups, filtroEstado, busqueda])
+    if (sortDir === 'asc')  return [...list].sort((a, b) => (a.nivel ?? 0) - (b.nivel ?? 0))
+    if (sortDir === 'desc') return [...list].sort((a, b) => (b.nivel ?? 0) - (a.nivel ?? 0))
+    return list
+  }, [startups, filtroEstado, busqueda, sortDir])
 
   const stats = useMemo(() => ({
     total:    startups.length,
@@ -59,20 +63,31 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
           placeholder="Buscar..."
           className="w-full bg-space-bg border border-space-accent rounded px-3 py-1.5 text-white text-xs focus:outline-none focus:border-space-neon"
         />
-        <div className="flex gap-1 flex-wrap">
-          {ESTADOS.map((estado) => (
-            <button
-              key={estado}
-              onClick={() => setFiltroEstado(estado)}
-              className={`text-xs px-2 py-1 rounded-full transition-colors ${
-                filtroEstado === estado
-                  ? 'bg-space-neon text-white'
-                  : 'bg-space-accent text-gray-400 hover:text-white'
-              }`}
-            >
-              {estado === 'todos' ? 'Todos' : ESTADO_INFO[estado].label}
-            </button>
-          ))}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-1 flex-wrap">
+            {ESTADOS.map((estado) => (
+              <button
+                key={estado}
+                onClick={() => setFiltroEstado(estado)}
+                className={`text-xs px-2 py-1 rounded-full transition-colors ${
+                  filtroEstado === estado
+                    ? 'bg-space-neon text-white'
+                    : 'bg-space-accent text-gray-400 hover:text-white'
+                }`}
+              >
+                {estado === 'todos' ? 'Todos' : ESTADO_INFO[estado].label}
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setSortDir((d) => d === null ? 'asc' : d === 'asc' ? 'desc' : null)}
+            className={`flex-shrink-0 text-xs px-2 py-1 rounded-full transition-colors whitespace-nowrap ${
+              sortDir ? 'bg-space-neon text-white' : 'bg-space-accent text-gray-400 hover:text-white'
+            }`}
+            title="Ordenar por nivel"
+          >
+            Nv {sortDir === 'asc' ? '↑' : sortDir === 'desc' ? '↓' : '↕'}
+          </button>
         </div>
       </div>
 
