@@ -40,7 +40,8 @@ export default function App() {
       }
       prevStartups.current = incoming
       setStartups(incoming)
-      phaserRef.current?.syncStartups(incoming, handlePlanetSelect, handleOrbitClick)
+      const active = incoming.filter((s) => !s.archived)
+      phaserRef.current?.syncStartups(active, handlePlanetSelect, handleOrbitClick)
       setSelected((prev) => {
         if (!prev) return null
         return incoming.find((s) => s.id === prev.id) ?? null
@@ -50,7 +51,8 @@ export default function App() {
   }, [user]) // eslint-disable-line
 
   useEffect(() => {
-    phaserRef.current?.syncStartups(startups, handlePlanetSelect, handleOrbitClick)
+    const active = startups.filter((s) => !s.archived)
+    phaserRef.current?.syncStartups(active, handlePlanetSelect, handleOrbitClick)
   }, [startups]) // eslint-disable-line
 
   function showNotification(msg) {

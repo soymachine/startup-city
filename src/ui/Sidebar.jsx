@@ -7,13 +7,19 @@ import { VERSION } from '../version'
 const ESTADOS = ['todos', ...Object.keys(ESTADO_INFO)]
 
 export default function Sidebar({ user, startups, onSelectStartup, onCenterOn }) {
-  const [filtroEstado, setFiltroEstado] = useState('todos')
-  const [busqueda, setBusqueda]         = useState('')
-  const [collapsed, setCollapsed]       = useState(false)
-  const [sortDir, setSortDir]           = useState(null) // null | 'asc' | 'desc'
+  const [filtroEstado, setFiltroEstado]   = useState('todos')
+  const [busqueda, setBusqueda]           = useState('')
+  const [collapsed, setCollapsed]         = useState(false)
+  const [sortDir, setSortDir]             = useState(null) // null | 'asc' | 'desc'
+  const [showArchived, setShowArchived]   = useState(false)
+
+  const active   = useMemo(() => startups.filter((s) => !s.archived), [startups])
+  const archived = useMemo(() => startups.filter((s) =>  s.archived), [startups])
+
+  const pool = showArchived ? archived : active
 
   const filtered = useMemo(() => {
-    const list = startups.filter((s) => {
+    const list = pool.filter((s) => {
       const matchEstado   = filtroEstado === 'todos' || s.estado === filtroEstado
       const matchBusqueda = !busqueda || s.nombre.toLowerCase().includes(busqueda.toLowerCase())
       return matchEstado && matchBusqueda
@@ -21,20 +27,14 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
     if (sortDir === 'asc')  return [...list].sort((a, b) => (a.nivel ?? 0) - (b.nivel ?? 0))
     if (sortDir === 'desc') return [...list].sort((a, b) => (b.nivel ?? 0) - (a.nivel ?? 0))
     return list
-  }, [startups, filtroEstado, busqueda, sortDir])
-
-  const stats = useMemo(() => ({
-    total:    startups.length,
-    activos:  startups.filter((s) => s.estado === 'activo').length,
-    maxNivel: startups.reduce((max, s) => Math.max(max, s.nivel ?? 0), 0),
-  }), [startups])
+  }, [pool, filtroEstado, busqueda, sortDir])
 
   if (collapsed) {
     return (
       <div className="w-12 bg-space-panel border-r border-space-accent flex flex-col items-center py-4 gap-4">
         <button onClick={() => setCollapsed(false)} className="text-gray-400 hover:text-white text-lg" title="Expandir">→</button>
         <div className="text-space-neon text-xs font-bold" style={{ writingMode: 'vertical-rl' }}>
-          {stats.total} startups
+          {active.length} startups
         </div>
       </div>
     )
@@ -95,8 +95,10 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
       <div className="flex-1 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="p-6 text-center text-gray-500 text-sm">
-            {startups.length === 0
-              ? 'Click en el espacio para añadir tu primera startup'
+            {pool.length === 0
+              ? showArchived
+                ? 'No hay startups archivadas'
+                : 'Click en el espacio para añadir tu primera startup'
               : 'No hay startups con estos filtros'}
           </div>
         ) : (
@@ -110,6 +112,19 @@ export default function Sidebar({ user, startups, onSelectStartup, onCenterOn })
           ))
         )}
       </div>
+
+      {/* Archive toggle */}
+      {archived.length > 0 && (
+        <div className="border-t border-space-accent/50">
+          <button
+            onClick={() => setShowArchived((v) => !v)}
+            className="w-full px-4 py-2.5 flex items-center justify-between text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <span>{showArchived ? '← Volver a activas' : `Archivadas (${archived.length})`}</span>
+            <span>{showArchived ? '' : '📁'}</span>
+          </button>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="p-3 border-t border-space-accent space-y-2">
@@ -126,13 +141,14 @@ function StartupRow({ startup, onSelect, onCenter }) {
   const nivel      = startup.nivel ?? 0
   const nivelInfo  = NIVEL_INFO[nivel]
   const estadoInfo = ESTADO_INFO[startup.estado] ?? ESTADO_INFO.activo
+  const isArchived = !!startup.archived
 
   return (
-    <div className="group flex items-center gap-3 px-3 py-2.5 hover:bg-space-accent/50 cursor-pointer border-b border-space-accent/30 transition-colors">
+    <div className={`group flex items-center gap-3 px-3 py-2.5 hover:bg-space-accent/50 cursor-pointer border-b border-space-accent/30 transition-colors ${isArchived ? 'opacity-50' : ''}`}>
       <button className="flex-1 flex items-center gap-3 min-w-0 text-left" onClick={onSelect}>
         <span className="text-sm font-bold tracking-widest flex-shrink-0 w-7 text-center" style={{ color: nivelInfo.color }}>{nivelInfo.emoji}</span>
         <div className="min-w-0">
-          <p className="text-white text-sm font-medium truncate">{startup.nombre}</p>
+          <p className={`text-sm font-medium truncate ${isArchived ? 'text-gray-500 line-through' : 'text-white'}`}>{startup.nombre}</p>
           <div className="flex items-center gap-1.5 mt-0.5">
             <span className="text-xs" style={{ color: estadoInfo.color }}>{estadoInfo.label}</span>
             <span className="text-gray-600 text-xs">·</span>
@@ -140,11 +156,13 @@ function StartupRow({ startup, onSelect, onCenter }) {
           </div>
         </div>
       </button>
-      <button
-        onClick={onCenter}
-        className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all text-lg"
-        title="Centrar en planeta"
-      >⊙</button>
+      {!isArchived && (
+        <button
+          onClick={onCenter}
+          className="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-white transition-all text-lg"
+          title="Centrar en planeta"
+        >⊙</button>
+      )}
     </div>
   )
 }

@@ -6,6 +6,8 @@ import {
   deleteDoc,
   onSnapshot,
   serverTimestamp,
+  arrayUnion,
+  Timestamp,
   query,
   orderBy,
 } from 'firebase/firestore'
@@ -40,6 +42,7 @@ export function subscribeToStartups(onChange) {
 }
 
 export async function addStartup(data, userId) {
+  const now = Timestamp.now()
   return addDoc(collection(db, COLLECTION), {
     nombre: data.nombre || 'Nueva Startup',
     descripcion: data.descripcion || '',
@@ -48,6 +51,9 @@ export async function addStartup(data, userId) {
     orbital_radius: data.orbital_radius ?? 220,
     url: data.url || '',
     notas: data.notas || '',
+    nivel_history: [{ nivel: 0, fecha: now }],
+    bitacora: [],
+    archived: false,
     created_by: userId,
     created_at: serverTimestamp(),
     updated_at: serverTimestamp(),
@@ -70,16 +76,41 @@ export async function updateStartup(id, data) {
 
 export async function subirNivel(id, nivelActual) {
   if (nivelActual >= 6) return
+  const nuevoNivel = nivelActual + 1
   return updateDoc(doc(db, COLLECTION, id), {
-    nivel: nivelActual + 1,
+    nivel: nuevoNivel,
+    nivel_history: arrayUnion({ nivel: nuevoNivel, fecha: Timestamp.now() }),
     updated_at: serverTimestamp(),
   })
 }
 
 export async function bajarNivel(id, nivelActual) {
   if (nivelActual <= 0) return
+  const nuevoNivel = nivelActual - 1
   return updateDoc(doc(db, COLLECTION, id), {
-    nivel: nivelActual - 1,
+    nivel: nuevoNivel,
+    nivel_history: arrayUnion({ nivel: nuevoNivel, fecha: Timestamp.now() }),
+    updated_at: serverTimestamp(),
+  })
+}
+
+export async function archiveStartup(id) {
+  return updateDoc(doc(db, COLLECTION, id), {
+    archived: true,
+    updated_at: serverTimestamp(),
+  })
+}
+
+export async function restoreStartup(id) {
+  return updateDoc(doc(db, COLLECTION, id), {
+    archived: false,
+    updated_at: serverTimestamp(),
+  })
+}
+
+export async function addBitacoraEntry(id, texto) {
+  return updateDoc(doc(db, COLLECTION, id), {
+    bitacora: arrayUnion({ texto: texto.trim(), fecha: Timestamp.now() }),
     updated_at: serverTimestamp(),
   })
 }
@@ -87,4 +118,3 @@ export async function bajarNivel(id, nivelActual) {
 export async function deleteStartup(id) {
   return deleteDoc(doc(db, COLLECTION, id))
 }
-
