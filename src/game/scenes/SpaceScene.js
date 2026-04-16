@@ -151,7 +151,8 @@ export default class SpaceScene extends Phaser.Scene {
     g.clear()
 
     for (const [, entry] of this._planets) {
-      const { startup, animRadius, prevRadius, targetRadius, transitioning, transferStartAngle } = entry
+      const { obj, animRadius, prevRadius, targetRadius, transitioning, transferStartAngle } = entry
+      const startup = obj.startup
       const nivel  = startup.nivel ?? 0
       const { body } = PLANET_COLORS[nivel] ?? PLANET_COLORS[0]
 
