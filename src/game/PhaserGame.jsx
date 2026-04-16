@@ -4,7 +4,7 @@ import BootScene from './scenes/BootScene'
 import SpaceScene from './scenes/SpaceScene'
 
 const PhaserGame = forwardRef(function PhaserGame(
-  { onPlanetSelect, onOrbitClick, onStartupOrbit, gradientInner, gradientOuter },
+  { onPlanetSelect, onOrbitClick, gradientInner, gradientOuter },
   ref
 ) {
   const containerRef     = useRef(null)
@@ -50,9 +50,6 @@ const PhaserGame = forwardRef(function PhaserGame(
       const scene = game.scene.getScene('SpaceScene')
       if (!scene) return
       spaceSceneRef.current = scene
-      scene.events.on('startup:orbit', (id, radius) => {
-        if (onStartupOrbit) onStartupOrbit(id, radius)
-      })
     }
 
     game.events.on('ready', wire)

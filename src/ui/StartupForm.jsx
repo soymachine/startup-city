@@ -1,14 +1,12 @@
 import { useState } from 'react'
 import { addStartup } from '../firebase/startups'
-import { MIN_ORBITAL_RADIUS, MAX_ORBITAL_RADIUS } from '../game/config'
 
-export default function StartupForm({ userId, orbital_radius, onClose }) {
+export default function StartupForm({ userId, onClose }) {
   const [form, setForm] = useState({
     nombre: '',
     descripcion: '',
     url: '',
     notas: '',
-    orbital_radius: orbital_radius ?? 220,
   })
   const [saving, setSaving] = useState(false)
 
@@ -27,7 +25,10 @@ export default function StartupForm({ userId, orbital_radius, onClose }) {
   return (
     <div className="h-full flex flex-col">
       <div className="flex items-center justify-between p-4 border-b border-space-accent">
-        <h2 className="text-white font-bold text-lg">✦ Nueva Startup</h2>
+        <div>
+          <h2 className="text-white font-bold text-lg">✦ Nueva Startup</h2>
+          <p className="text-xs text-gray-500 mt-0.5">Empezará en órbita interior · Nivel I</p>
+        </div>
         <button onClick={onClose} className="text-gray-400 hover:text-white text-xl leading-none">×</button>
       </div>
 
@@ -66,24 +67,6 @@ export default function StartupForm({ userId, orbital_radius, onClose }) {
             className="w-full bg-space-bg border border-space-accent rounded px-3 py-2 text-white text-sm focus:outline-none focus:border-space-neon"
             placeholder="https://"
           />
-        </div>
-
-        <div>
-          <label className="block text-xs text-gray-400 uppercase tracking-wider mb-1">
-            Radio orbital — {form.orbital_radius} px
-          </label>
-          <input
-            type="range"
-            min={MIN_ORBITAL_RADIUS}
-            max={MAX_ORBITAL_RADIUS}
-            value={form.orbital_radius}
-            onChange={(e) => setForm({ ...form, orbital_radius: Number(e.target.value) })}
-            className="w-full accent-space-star"
-          />
-          <div className="flex justify-between text-xs text-gray-600 mt-0.5">
-            <span>Cercano al sol</span>
-            <span>Órbita exterior</span>
-          </div>
         </div>
 
         <div>

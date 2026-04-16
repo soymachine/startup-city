@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { onAuthStateChanged } from 'firebase/auth'
 import { auth } from './firebase/config'
-import { subscribeToStartups, updateStartupOrbitalRadius } from './firebase/startups'
+import { subscribeToStartups } from './firebase/startups'
+import { LEVEL_RADII, PLANET_RADII } from './game/config'
 import Login from './ui/Login'
 import Sidebar from './ui/Sidebar'
 import StartupPanel from './ui/StartupPanel'
@@ -9,12 +10,41 @@ import StartupForm from './ui/StartupForm'
 import SettingsModal from './ui/SettingsModal'
 import PhaserGame from './game/PhaserGame'
 
+/**
+ * Assigns orbital radii derived from each startup's nivel.
+ * All startups at the same nivel share a base radius and are spread into
+ * sub-lanes so they don't overlap. Sorted by created_at for stable assignment.
+ */
+function computeOrbitalRadii(startups) {
+  // Group by nivel, sort each group oldest-first for stable lane assignment
+  const byLevel = {}
+  for (const s of startups) {
+    const n = s.nivel ?? 0
+    if (!byLevel[n]) byLevel[n] = []
+    byLevel[n].push(s)
+  }
+  for (const n in byLevel) {
+    byLevel[n].sort((a, b) => (a.created_at?.seconds ?? 0) - (b.created_at?.seconds ?? 0))
+  }
+
+  return startups.map((s) => {
+    const n       = s.nivel ?? 0
+    const group   = byLevel[n]
+    const idx     = group.findIndex((g) => g.id === s.id)
+    const count   = group.length
+    // Lane spacing: planet diameter + 30 px gap between edges
+    const spacing = PLANET_RADII[n] * 2 + 30
+    const offset  = (idx - (count - 1) / 2) * spacing
+    return { ...s, orbital_radius: Math.round(LEVEL_RADII[n] + offset) }
+  })
+}
+
 export default function App() {
   const [user, setUser]               = useState(null)
   const [authLoading, setAuthLoading] = useState(true)
   const [startups, setStartups]       = useState([])
   const [selected, setSelected]       = useState(null)
-  const [newOrbit, setNewOrbit]       = useState(null)   // orbital_radius for new startup
+  const [newOrbit, setNewOrbit]       = useState(null)
   const [notification, setNotification] = useState(null)
   const [showSettings, setShowSettings] = useState(false)
   const [bgColors, setBgColors]         = useState({ inner: '#03152b', outer: '#03050f' })
@@ -40,7 +70,7 @@ export default function App() {
       }
       prevStartups.current = incoming
       setStartups(incoming)
-      const active = incoming.filter((s) => !s.archived)
+      const active = computeOrbitalRadii(incoming.filter((s) => !s.archived))
       phaserRef.current?.syncStartups(active, handlePlanetSelect, handleOrbitClick)
       setSelected((prev) => {
         if (!prev) return null
@@ -51,7 +81,7 @@ export default function App() {
   }, [user]) // eslint-disable-line
 
   useEffect(() => {
-    const active = startups.filter((s) => !s.archived)
+    const active = computeOrbitalRadii(startups.filter((s) => !s.archived))
     phaserRef.current?.syncStartups(active, handlePlanetSelect, handleOrbitClick)
   }, [startups]) // eslint-disable-line
 
@@ -68,14 +98,6 @@ export default function App() {
   const handleOrbitClick = useCallback((radius) => {
     setSelected(null)
     setNewOrbit(radius)
-  }, [])
-
-  const handleStartupOrbit = useCallback(async (id, radius) => {
-    try {
-      await updateStartupOrbitalRadius(id, radius)
-    } catch (e) {
-      console.error('Orbit update failed', e)
-    }
   }, [])
 
   const handleCenterOn = useCallback((id) => {
@@ -109,7 +131,6 @@ export default function App() {
           ref={phaserRef}
           onPlanetSelect={handlePlanetSelect}
           onOrbitClick={handleOrbitClick}
-          onStartupOrbit={handleStartupOrbit}
           gradientInner={bgColors.inner}
           gradientOuter={bgColors.outer}
         />
@@ -139,7 +160,7 @@ export default function App() {
         )}
 
         <div className="absolute bottom-4 left-4 z-10 text-xs text-gray-600 pointer-events-none">
-          Rueda: zoom · Drag: navegar · Click planeta: editar · Drag planeta: cambiar órbita
+          Rueda: zoom · Drag: navegar · Click planeta: editar
         </div>
       </div>
 
@@ -151,7 +172,6 @@ export default function App() {
           {newOrbit !== null && !selected && (
             <StartupForm
               userId={user.uid}
-              orbital_radius={newOrbit}
               onClose={() => setNewOrbit(null)}
             />
           )}

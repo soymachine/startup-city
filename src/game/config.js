@@ -20,6 +20,13 @@ export const MAX_ORBITAL_RADIUS = 1440
 export const DEFAULT_ORBITAL_RADIUS = 220
 
 /**
+ * Base orbital radius (world px) for each nivel (0–6).
+ * Orbits are derived from nivel — not set manually.
+ * Multiple startups at the same nivel spread into sub-lanes around this base.
+ */
+export const LEVEL_RADII = [160, 300, 460, 640, 840, 1060, 1300]
+
+/**
  * Orbital angular velocity (rad/ms) at a given radius.
  * Kepler's 3rd law: T ∝ r^1.5, so v ∝ 1 / r^1.5
  * Base: 5-minute period at r = 220
